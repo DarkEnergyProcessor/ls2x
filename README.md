@@ -25,7 +25,7 @@ External Libraries
 
 * KissFFT (BSD 3-Clause License)
 
-* FFmpeg (LGPL)
+* FFmpeg (LGPL) ship with FFmpeg 3.4.1 header files by default!
 
 License
 -------

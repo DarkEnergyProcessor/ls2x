@@ -62,7 +62,7 @@ if lib.features.libav then
 	function libav.loadAudioFile(path)
 		local sInfoP = ffi.new("songInformation[1]") -- FFI-managed object
 		local sInfo = sInfoP[0]
-		if loadAudioFile(path, sInfoP) > 0 then
+		if loadAudioFile(path, sInfoP) then
 			local meta = {}
 			local info = {
 				sampleRate = sInfo.sampleRate,
@@ -78,13 +78,15 @@ if lib.features.libav then
 				}
 			end
 			if sInfo.metadataCount > 0 then 
-				for i = 1, sInfo.metadataCount do
-					local dict = sInfo.metadata
-					info.metadata[ffi.string(dict.key, dict.keySize)] = ffi.string(dict.value, dict.valueSize)
+				for i = 1, tonumber(sInfo.metadataCount) do
+					local dict = sInfo.metadata[i-1]
+					local k = ffi.string(dict.key, dict.keySize)
+					local v = ffi.string(dict.value, dict.valueSize)
+					info.metadata[k] = v
 					libav.free(dict.key)
 					libav.free(dict.value)
 				end
-				libav.free(dict)
+				libav.free(sInfo.metadata)
 			end
 			
 			return info
