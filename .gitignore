@@ -1,0 +1,5 @@
+bin
+sln/.vs
+sln/ls2x/*
+!sln/ls2x/ls2x.vcxproj
+!sln/ls2x/ls2x.vcxproj.filters
