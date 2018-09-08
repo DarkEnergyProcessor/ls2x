@@ -3,7 +3,16 @@
 -- See copyright notice in LS2X main.cpp
 
 local ls2x = {}
-local lib = require("ls2xlib")
+local haslib, lib = pcall(require, "ls2xlib")
+
+if not(haslib) then
+	-- no features
+	return {
+		features = {}
+		rawptr = {}
+	}
+end
+
 local ffi = require("ffi")
 
 -- audiomix
