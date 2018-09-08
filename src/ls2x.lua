@@ -7,10 +7,7 @@ local haslib, lib = pcall(require, "ls2xlib")
 
 if not(haslib) then
 	-- no features
-	return {
-		features = {}
-		rawptr = {}
-	}
+	return ls2x
 end
 
 local ffi = require("ffi")
