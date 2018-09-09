@@ -8,14 +8,15 @@
 
 #include <new>
 
-template <typename T> inline T CLAMP(T value,T low,T high)
+template <typename T> inline T CLAMP(T value, T low, T high)
 {
 	return (value < low) ? low : ((value > high) ? high : value);
 }
 
-template <typename T, typename U = float> inline T LERP(T v0, T v1, U t)
+template <typename T, typename U = float> inline T INTERPOLATE(T v0, T v1, U t)
 {
-	return T((1 - t) * U(v0) + t * U(v1));
+	// return T((1 - t) * U(v0) + t * U(v1));
+	return T((2*t*t*t-3*t*t+1)*U(v0)+(-2*t*t*t+3*t*t)*U(v1)+(t*t*t-t*t));
 }
 
 namespace ls2x
@@ -24,6 +25,7 @@ namespace audiomix
 {
 
 int g_SampleRate;
+float g_MasterVolume;
 size_t g_BufferSize;
 short *g_BufferData;
 
@@ -38,7 +40,7 @@ void resample(const short *src, short *dst, size_t smpSrc, size_t smpDst, int ch
 			for (size_t i = 0; i < smpDst; i++)
 			{
 				double idx = double(i) * ratio;
-				dst[i] = LERP(src[size_t(idx)], src[size_t(idx+.5)], idx-floor(idx));
+				dst[i] = INTERPOLATE(src[size_t(idx)], src[size_t(idx+.5)], idx-floor(idx));
 			}
 			break;
 		}
@@ -47,8 +49,8 @@ void resample(const short *src, short *dst, size_t smpSrc, size_t smpDst, int ch
 			for (size_t i = 0; i < smpDst; i++)
 			{
 				double idx = double(i) * ratio;
-				dst[i*2] = LERP(src[size_t(idx)*2], src[size_t(idx+.5)*2+1], idx-floor(idx));
-				dst[i*2+1] = LERP(src[size_t(idx)*2+1], src[size_t(idx+.5)*2+1], idx-floor(idx));
+				dst[i*2] = INTERPOLATE(src[size_t(idx)*2], src[size_t(idx+.5)*2], idx-floor(idx));
+				dst[i*2+1] = INTERPOLATE(src[size_t(idx)*2+1], src[size_t(idx+.5)*2+1], idx-floor(idx));
 			}
 			break;
 		}
@@ -56,7 +58,7 @@ void resample(const short *src, short *dst, size_t smpSrc, size_t smpDst, int ch
 	}
 }
 
-bool startSession(int sampleRate, size_t smpLen)
+bool startSession(float masterVolume, int sampleRate, size_t smpLen)
 {
 	// false if existing session is open
 	if (g_BufferData) return false;
@@ -67,13 +69,15 @@ bool startSession(int sampleRate, size_t smpLen)
 
 	g_SampleRate = sampleRate;
 	g_BufferSize = smpLen;
+	g_MasterVolume = masterVolume;
 	return true;
 }
 
-bool mixSample(const short *data, size_t smpLen, int channelCount)
+bool mixSample(const short *data, size_t smpLen, int channelCount, float volume)
 {
 	// only mono or stereo atm
 	size_t maxLen = smpLen > g_BufferSize ? g_BufferSize : smpLen;
+	float vol = volume * g_MasterVolume;
 
 	switch (channelCount)
 	{
@@ -81,9 +85,9 @@ bool mixSample(const short *data, size_t smpLen, int channelCount)
 		{
 			for (size_t i = 0; i < maxLen; i++)
 			{
-				int smp = int(data[i]);
-				g_BufferData[i * 2] = CLAMP(g_BufferData[i * 2] + smp, -32767, 32767);
-				g_BufferData[i * 2 + 1] = CLAMP(g_BufferData[i * 2 + 1] + smp, -32767, 32767);
+				short smp = CLAMP<float>(float(data[i]) * vol, -32767.0, 32767.0);
+				g_BufferData[i * 2] = CLAMP<int>(g_BufferData[i * 2] + smp, -32767, 32767);
+				g_BufferData[i * 2 + 1] = CLAMP<int>(g_BufferData[i * 2 + 1] + smp, -32767, 32767);
 			}
 			break;
 		}
@@ -91,8 +95,10 @@ bool mixSample(const short *data, size_t smpLen, int channelCount)
 		{
 			for(size_t i = 0; i < maxLen; i++)
 			{
-				g_BufferData[i * 2] = CLAMP(int(g_BufferData[i * 2]) + int(data[i * 2]), -32767, 32767);
-				g_BufferData[i * 2 + 1] = CLAMP(int(g_BufferData[i * 2 + 1]) + int(data[i * 2 + 1]), -32767, 32767);
+				short smp1 = CLAMP<float>(float(data[i * 2]) * vol, -32767.0, 32767.0);
+				short smp2 = CLAMP<float>(float(data[i * 2 + 1]) * vol, -32767.0, 32767.0);
+				g_BufferData[i * 2] = CLAMP<int>(g_BufferData[i * 2] + smp1, -32767, 32767);
+				g_BufferData[i * 2 + 1] = CLAMP<int>(g_BufferData[i * 2 + 1] + smp2, -32767, 32767);
 			}
 			break;
 		}
@@ -102,9 +108,10 @@ bool mixSample(const short *data, size_t smpLen, int channelCount)
 	return true;
 }
 
-const short *getSamplePointer()
+void getSamplePointer(short *dest)
 {
-	return g_BufferData;
+	memcpy(dest, g_BufferData, g_BufferSize * 2 * sizeof(short));
+	memset(g_BufferData, 0, g_BufferSize * 2 * sizeof(short));
 }
 
 void endSession()

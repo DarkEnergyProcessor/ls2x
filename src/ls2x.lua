@@ -18,9 +18,9 @@ if lib.features.audiomix then
 	ls2x.audiomix = audiomix
 
 	audiomix.resample = ffi.cast("void(*)(const short*, short*, size_t, size_t, int)", lib.rawptr.resample)
-	audiomix.startSession = ffi.cast("bool(*)(int, size_t)", lib.rawptr.startAudioMixSession)
-	audiomix.mixSample = ffi.cast("bool(*)(const short *, size_t, int)", lib.rawptr.mixSample)
-	audiomix.getSample = ffi.cast("const short*(*)()", lib.rawptr.getAudioMixPointer)
+	audiomix.startSession = ffi.cast("bool(*)(float, int, size_t)", lib.rawptr.startAudioMixSession)
+	audiomix.mixSample = ffi.cast("bool(*)(const short *, size_t, int, float)", lib.rawptr.mixSample)
+	audiomix.getSample = ffi.cast("void(*)(short *)", lib.rawptr.getAudioMixPointer)
 	audiomix.endSession = ffi.cast("void(*)()", lib.rawptr.endAudioMixSession)
 end
 
