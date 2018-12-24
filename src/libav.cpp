@@ -4,19 +4,6 @@
 
 #ifdef LS2X_USE_LIBAV
 #include "libav.h"
-#include "dynwrap/dynwrap.h"
-
-extern "C"
-{
-// libav
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libavutil/avutil.h"
-#include "libavutil/opt.h"
-#include "libavutil/frame.h"
-#include "libswscale/swscale.h"
-#include "libswresample/swresample.h"
-}
 
 #include <queue>
 
@@ -25,77 +12,10 @@ namespace ls2x
 namespace libav
 {
 
-bool supportCheck = false;
+libavFunctions avF;
+bool encodingSupported = false;
 bool libavSatisfied = false;
 const char *usedEncoder = nullptr;
-
-struct libavFunctions
-{
-	// handle
-	ls2x::so *lavc, *lavf, *lavu, *sws, *swr;
-	// versioning
-	decltype(avcodec_version) *codecVersion; //lavc
-	decltype(avformat_version) *formatVersion; // lavf
-	decltype(avutil_version) *utilVersion; // lavu
-	// registration
-	decltype(av_register_all) *registerAll; // lavf
-	decltype(avcodec_register_all) *codecRegisterAll; // lavc
-	// format
-	decltype(avformat_open_input) *formatOpenInput; // lavf
-	decltype(avformat_alloc_output_context2) *formatAllocOutputContext; // lavf
-	decltype(avformat_find_stream_info) *formatFindStreamInfo; // lavf
-	decltype(av_read_frame) *readPacket; // lavf
-	decltype(avio_open) *ioOpen; // lavf
-	decltype(avio_closep) *ioClose; // lavf
-	decltype(av_interleaved_write_frame) *interleavedWriteFrame; // lavf
-	decltype(avformat_init_output) *formatInitOutput; // lavf
-	decltype(av_write_trailer) *writeTrailer; // lavf
-	decltype(avformat_write_header) *formatWriteHeader; // lavf
-	decltype(avformat_free_context) *formatFreeContext; // lavf
-	decltype(avformat_new_stream) *formatNewStream; // lavf
-	decltype(av_dump_format) *dumpFormat; // lavf
-	decltype(avformat_close_input) *formatCloseInput; // lavf
-	// codecs
-	decltype(avcodec_alloc_context3) *codecAllocContext; // lavc
-	decltype(avcodec_find_encoder_by_name) *codecFindEncoderByName; // lavc
-	decltype(avcodec_find_decoder) *codecFindDecoder; // lavc
-	decltype(avcodec_open2) *codecOpen; // lavc
-	decltype(avcodec_send_packet) *codecSendPacket; // lavc
-	decltype(avcodec_receive_packet) *codecReceivePacket; // lavc
-	decltype(avcodec_send_frame) *codecSendFrame; // lavc
-	decltype(avcodec_receive_frame) *codecReceiveFrame; // lavc
-	decltype(av_packet_free) *packetFree; // lavc
-	decltype(avcodec_free_context) *codecFreeContext; // lavc
-	decltype(avcodec_parameters_from_context) *codecParametersFromContext; // lavc
-	decltype(av_packet_alloc) *packetAlloc; // lavc
-	decltype(av_packet_rescale_ts) *packetRescaleTS; // lavc
-	decltype(av_packet_unref) *packetUnref; // lavc
-	// util
-	decltype(av_frame_alloc) *frameAlloc; // lavu
-	decltype(av_frame_get_buffer) *frameGetBuffer; // lavu
-	decltype(av_frame_make_writable) *frameMakeWritable; // lavu
-	decltype(av_frame_free) *frameFree; // lavu
-	decltype(av_opt_set) *optSet; // lavu
-	decltype(av_dict_count) *dictCount; // lavu
-	decltype(av_dict_get) *dictGet; // lavu
-	decltype(av_strdup) *strdup; // lavu
-	decltype(av_mallocz) *malloc; // lavu
-	decltype(av_free) *free; // lavu
-	decltype(av_strerror) *strerror; // lavu
-	decltype(av_log_set_level) *logSetLevel; // lavu
-	// sws
-	decltype(sws_getContext) *swsGetContext; // sws
-	decltype(sws_scale) *swsScale; // sws
-	decltype(sws_freeContext) *swsFreeContext; // sws
-	// swr
-	decltype(swr_alloc_set_opts) *swrAllocSetOpts; // swr
-	decltype(swr_init) *swrInit; // swr
-	decltype(swr_convert_frame) *swrConvertFrame; // swr
-	decltype(swr_get_delay) *swrGetDelay; // swr
-	decltype(swr_convert) *swrConvert; // swr
-	decltype(swr_free) *swrFree; // swr
-};
-libavFunctions avF;
 
 ls2x::so *loadLibAVDLL(const char *name, int version)
 {
@@ -119,6 +39,9 @@ ls2x::so *loadLibAVDLL(const char *name, int version)
 
 bool initAVDLL()
 {
+	// linked libav means the libav function always exist
+	// and is available in linker.
+#ifndef LS2X_LIBAV_LINKED
 	// av functions
 	avF.lavu = loadLibAVDLL("avutil", LIBAVUTIL_VERSION_MAJOR);
 	avF.swr = loadLibAVDLL("swresample", LIBSWRESAMPLE_VERSION_MAJOR);
@@ -134,21 +57,29 @@ bool initAVDLL()
 		if (avF.lavu) {delete avF.lavu; avF.lavu = nullptr;}
 		return false;
 	}
+#endif
 	return true;
 }
 
-bool initLibAVFunctions()
-{
 #define STR(x) #x
+
+#ifdef LS2X_LIBAV_LINKED
+#define LOAD(_, var, name) \
+	avF.##var = &##name;
+#else
 #define LOAD(avtype, var, name) \
 	avF.##var = (decltype(##name)*) avF.##avtype->getSymbol(STR(name)); \
 	if (avF.##var == nullptr) return false;
+#endif
 
+bool initLibAVFunctions()
+{
 	// registration
 	LOAD(lavf, registerAll, av_register_all);
 	LOAD(lavc, codecRegisterAll, avcodec_register_all);
 	// lavf
 	LOAD(lavf, formatOpenInput, avformat_open_input);
+	LOAD(lavf, formatAllocContext, avformat_alloc_context);
 	LOAD(lavf, formatAllocOutputContext, avformat_alloc_output_context2);
 	LOAD(lavf, formatFindStreamInfo, avformat_find_stream_info);
 	LOAD(lavf, readPacket, av_read_frame);
@@ -162,6 +93,8 @@ bool initLibAVFunctions()
 	LOAD(lavf, formatNewStream, avformat_new_stream);
 	LOAD(lavf, dumpFormat, av_dump_format);
 	LOAD(lavf, formatCloseInput, avformat_close_input);
+	LOAD(lavf, seekFrame, av_seek_frame);
+	LOAD(lavf, ioAllocContext, avio_alloc_context);
 	// lavc
 	LOAD(lavc, codecAllocContext, avcodec_alloc_context3);
 	LOAD(lavc, codecFindEncoderByName, avcodec_find_encoder_by_name);
@@ -174,9 +107,11 @@ bool initLibAVFunctions()
 	LOAD(lavc, packetFree, av_packet_free);
 	LOAD(lavc, codecFreeContext, avcodec_free_context);
 	LOAD(lavc, codecParametersFromContext, avcodec_parameters_from_context);
+	LOAD(lavc, codecParametersToContext, avcodec_parameters_to_context);
 	LOAD(lavc, packetAlloc, av_packet_alloc);
 	LOAD(lavc, packetRescaleTS, av_packet_rescale_ts);
 	LOAD(lavc, packetUnref, av_packet_unref);
+	LOAD(lavc, flushBuffers, avcodec_flush_buffers);
 	// lavu
 	LOAD(lavu, frameAlloc, av_frame_alloc);
 	LOAD(lavu, frameGetBuffer, av_frame_get_buffer);
@@ -190,6 +125,7 @@ bool initLibAVFunctions()
 	LOAD(lavu, free, av_free);
 	LOAD(lavu, strerror, av_strerror);
 	LOAD(lavu, logSetLevel, av_log_set_level);
+	LOAD(lavu, getDefaultChannelLayout, av_get_default_channel_layout);
 	// sws
 	LOAD(sws, swsGetContext, sws_getContext);
 	LOAD(sws, swsScale, sws_scale);
@@ -219,16 +155,18 @@ bool freeLibAV()
 bool isSupported()
 {
 	static bool initialized = false;
-	if (initialized) return supportCheck;
+	if (initialized) return libavSatisfied;
 
 	initialized = true;
-	memset(&avF, 0, sizeof(libavFunctions));
+	avF.lavc = avF.lavf = avF.lavu = nullptr;
 	if (!initAVDLL())
-		return supportCheck = false;
+		return libavSatisfied = false;
+
 	// register very basic functions
-	avF.codecVersion = (decltype(avcodec_version)*) avF.lavc->getSymbol("avcodec_version");
-	avF.formatVersion = (decltype(avformat_version)*) avF.lavf->getSymbol("avformat_version");
-	avF.utilVersion = (decltype(avutil_version)*) avF.lavu->getSymbol("avutil_version");
+	LOAD(lavc, codecVersion, avcodec_version);
+	LOAD(lavf, formatVersion, avformat_version);
+	LOAD(lavu, utilVersion, avutil_version);
+
 	// check version
 	if (
 		(avF.codecVersion() >> 16) < LIBAVCODEC_VERSION_MAJOR ||
@@ -236,25 +174,26 @@ bool isSupported()
 		(avF.utilVersion() >> 16) < LIBAVUTIL_VERSION_MAJOR
 	)
 	{
-		return supportCheck = freeLibAV();
+		return libavSatisfied = freeLibAV();
 	}
 
 	if (!initLibAVFunctions())
-		return supportCheck = freeLibAV();
+		return libavSatisfied = freeLibAV();
 
-	libavSatisfied = true;
 	// initialize
-	// av_register_all();
 	avF.registerAll();
-	// avcodec_register_all();
 	avF.codecRegisterAll();
+	libavSatisfied = true;
 
 	// make sure there's matroska muxer
 	{
 		AVFormatContext *x = nullptr;
 		if (avF.formatAllocOutputContext(&x, nullptr, "matroska", nullptr) < 0)
+		{
 			// no muxer
-			return supportCheck = freeLibAV();
+			encodingSupported = false;
+			return libavSatisfied;
+		}
 		avF.formatFreeContext(x);
 	}
 
@@ -264,10 +203,13 @@ bool isSupported()
 		if (avF.codecFindEncoderByName(usedEncoder = "libvpx-vp9") == nullptr)
 			// okay. Try mpeg4
 			if (avF.codecFindEncoderByName(usedEncoder = "mpeg4") == nullptr)
+			{
 				// no video encoder??
-				return supportCheck = freeLibAV();
+				encodingSupported = false;
+				return libavSatisfied;
+			}
 
-	return supportCheck = true;
+	return encodingSupported = true;
 }
 
 AVFormatContext *g_FormatContext = nullptr;
@@ -299,7 +241,7 @@ void clean()
 
 bool startSession(const char *output, int width, int height, int framerate)
 {
-	if (!supportCheck) return false;
+	if (!encodingSupported) return false;
 
 	// open output context
 	if (avF.formatAllocOutputContext(&g_FormatContext, nullptr, nullptr, output) < 0)
@@ -758,16 +700,26 @@ cleanup:
 	return ret;
 }
 
+bool hasEncodingSupported()
+{
+	return encodingSupported;
+}
+
+libavFunctions *getFunctionPointer()
+{
+	return libavSatisfied ? &avF : nullptr;
+}
+
 const std::map<std::string, void*> &getFunctions()
 {
 	static std::map<std::string, void*> funcs = {
+		{"encodingSupported", hasEncodingSupported},
 		{"startEncodingSession", startSession},
 		{"supplyEncoder", supply},
 		{"endEncodingSession", endSession},
-		{"av_free", nullptr},
-		{"loadAudioFile", loadAudioFile}
+		{"loadAudioFile", loadAudioFile},
+		{"av_free", avF.free},
 	};
-	funcs["av_free"] = avF.free;
 	return funcs;
 }
 

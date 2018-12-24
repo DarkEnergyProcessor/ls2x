@@ -24,6 +24,10 @@ extern "C" {
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
+
+#ifdef LS2X_EMBEDDED_IN_LOVE
+int luaopen_lvep(lua_State *L);
+#endif
 }
 
 #include "audiomix.h"
@@ -78,6 +82,17 @@ extern "C" int LUALIB_API luaopen_ls2xlib(lua_State *L)
 			lua_pushboolean(L, 1);
 			lua_rawset(L, -3);
 			registerFunc(L, ptrTable, ls2x::libav::getFunctions());
+#ifdef LS2X_EMBEDDED_IN_LOVE
+			// lvep
+			lua_getglobal(L, "package");
+			lua_getfield(L, -1, "preload");
+			lua_pushcfunction(L, luaopen_lvep);
+			lua_setfield(L, -2, "lvep");
+			lua_pop(L, 2);
+			lua_pushstring(L, "lvep");
+			lua_pushboolean(L, 1);
+			lua_rawset(L, -3);
+#endif
 		}
 #endif
 	}
