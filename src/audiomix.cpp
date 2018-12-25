@@ -40,7 +40,8 @@ void resample(const short *src, short *dst, size_t smpSrc, size_t smpDst, int ch
 			for (size_t i = 0; i < smpDst; i++)
 			{
 				double idx = double(i) * ratio;
-				dst[i] = INTERPOLATE(src[size_t(idx)], src[size_t(idx+.5)], idx-floor(idx));
+				size_t j1 = size_t(idx), j2 = size_t(idx+0.5);
+				dst[i] = INTERPOLATE(src[j1], src[j2], idx-floor(idx));
 			}
 			break;
 		}
@@ -49,8 +50,10 @@ void resample(const short *src, short *dst, size_t smpSrc, size_t smpDst, int ch
 			for (size_t i = 0; i < smpDst; i++)
 			{
 				double idx = double(i) * ratio;
-				dst[i*2] = INTERPOLATE(src[size_t(idx)*2], src[size_t(idx+.5)*2], idx-floor(idx));
-				dst[i*2+1] = INTERPOLATE(src[size_t(idx)*2+1], src[size_t(idx+.5)*2+1], idx-floor(idx));
+				double t = idx - floor(idx);
+				size_t j1 = size_t(idx), j2 = size_t(idx+0.5);
+				dst[i*2] = INTERPOLATE(src[j1*2], src[j2*2], t);
+				dst[i*2+1] = INTERPOLATE(src[j1*2+1], src[j2*2+1], t);
 			}
 			break;
 		}
@@ -123,11 +126,11 @@ void endSession()
 const std::map<std::string, void*> &getFunctions()
 {
 	static std::map<std::string, void*> func = {
-		{"resample", &resample},
-		{"startAudioMixSession", &startSession},
-		{"mixSample", &mixSample},
-		{"getAudioMixPointer", &getSamplePointer},
-		{"endAudioMixSession", &endSession}
+		{std::string("resample"), (void*) &resample},
+		{std::string("startAudioMixSession"), (void*) &startSession},
+		{std::string("mixSample"), (void*) &mixSample},
+		{std::string("getAudioMixPointer"), (void*) &getSamplePointer},
+		{std::string("endAudioMixSession"), (void*) &endSession}
 	};
 
 	return func;
