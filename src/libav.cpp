@@ -65,11 +65,11 @@ bool initAVDLL()
 
 #ifdef LS2X_LIBAV_LINKED
 #define LOAD(_, var, name) \
-	avF.##var = &##name;
+	avF.var = &##name;
 #else
 #define LOAD(avtype, var, name) \
-	avF.##var = (decltype(##name)*) avF.##avtype->getSymbol(STR(name)); \
-	if (avF.##var == nullptr) return false;
+	avF.var = (decltype(name)*) avF.avtype->getSymbol(STR(name)); \
+	if (avF.var == nullptr) return false;
 #endif
 
 bool initLibAVFunctions()
@@ -407,6 +407,8 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	SwsContext *sws = nullptr;
 	AVPacket *packet = nullptr;
 	AVFrame *tempFrame = nullptr;
+	int64_t delay = 0;
+	int rval = 0;
 
 	// assume it's already open
 	if (avF.formatFindStreamInfo(fmtContext, nullptr) < 0)
@@ -494,7 +496,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	tempFrame = avF.frameAlloc();
 	ret = new std::queue<AVFrame*>;
 	audioLen = 0;
-	int rval = avF.readPacket(fmtContext, packet);
+	rval = avF.readPacket(fmtContext, packet);
 	while (rval >= 0)
 	{
 		bool isV = vStream && packet->stream_index == vStream->id;
@@ -600,7 +602,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 		}
 	}
 	// flush swr
-	int64_t delay = avF.swrGetDelay(swr, aStream->codecpar->sample_rate);
+	delay = avF.swrGetDelay(swr, aStream->codecpar->sample_rate);
 	if (delay > 0)
 	{
 		AVFrame *frame = avF.frameAlloc();
@@ -680,11 +682,12 @@ bool loadAudioFile(const char *input, songInformation &info)
 		return false;
 
 	size_t smpLen;
+	short *sample = nullptr;
 	std::queue<AVFrame*> *queue = loadAudioMainRoutine(fmtContext, info, smpLen);
 	if (queue == nullptr)
 		goto cleanup;
 
-	short *sample = loadAudioConcat(queue, smpLen);
+	sample = loadAudioConcat(queue, smpLen);
 	if (sample == nullptr)
 		goto cleanup;
 
@@ -713,12 +716,12 @@ libavFunctions *getFunctionPointer()
 const std::map<std::string, void*> &getFunctions()
 {
 	static std::map<std::string, void*> funcs = {
-		{"encodingSupported", hasEncodingSupported},
-		{"startEncodingSession", startSession},
-		{"supplyEncoder", supply},
-		{"endEncodingSession", endSession},
-		{"loadAudioFile", loadAudioFile},
-		{"av_free", avF.free},
+		{std::string("encodingSupported"), (void*) hasEncodingSupported},
+		{std::string("startEncodingSession"), (void*) startSession},
+		{std::string("supplyEncoder"), (void*) supply},
+		{std::string("endEncodingSession"), (void*) endSession},
+		{std::string("loadAudioFile"), (void*) loadAudioFile},
+		{std::string("av_free"), (void*) avF.free},
 	};
 	return funcs;
 }

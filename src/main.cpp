@@ -47,7 +47,11 @@ void registerFunc(lua_State *L, int idx, const std::map<std::string, void*> &fun
 	}
 }
 
+#ifdef LUA_BUILD_AS_DLL
 extern "C" int LUALIB_API luaopen_ls2xlib(lua_State *L)
+#else
+extern "C" int luaopen_ls2xlib(lua_State *L)
+#endif
 {
 	lua_newtable(L);
 	int baseTable = lua_gettop(L);

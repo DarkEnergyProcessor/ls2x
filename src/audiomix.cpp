@@ -5,6 +5,7 @@
 #include "audiomix.h"
 
 #include <cmath>
+#include <cstring>
 
 #include <new>
 
@@ -73,6 +74,7 @@ bool startSession(float masterVolume, int sampleRate, size_t smpLen)
 	g_SampleRate = sampleRate;
 	g_BufferSize = smpLen;
 	g_MasterVolume = masterVolume;
+	memset(g_BufferData, 0, smpLen * 4);
 	return true;
 }
 
