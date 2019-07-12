@@ -16,14 +16,11 @@ kiss_fft_cfg getCfg(size_t sampleSize)
 	static kiss_fft_cfg cfg = nullptr;
 	static size_t prevSmpSize = 0;
 
-	if (cfg)
-		if (prevSmpSize != sampleSize)
-		{
-			kiss_fft_free(cfg);
-			cfg = kiss_fft_alloc(prevSmpSize = sampleSize, false, nullptr, nullptr);
-		}
-	else
-		cfg = kiss_fft_alloc(prevSmpSize = sampleSize, false, nullptr, nullptr);
+	if (!cfg || prevSmpSize != sampleSize)
+	{
+		kiss_fft_free(cfg);
+		cfg = kiss_fft_alloc(int(prevSmpSize = sampleSize), false, nullptr, nullptr);
+	}
 
 	return cfg;
 }

@@ -160,7 +160,7 @@ bool isSupported()
 	initialized = true;
 	avF.lavc = avF.lavf = avF.lavu = nullptr;
 	if (!initAVDLL())
-		return libavSatisfied = false;
+		return false;
 
 	// register very basic functions
 	LOAD(lavc, codecVersion, avcodec_version);
@@ -174,11 +174,11 @@ bool isSupported()
 		(avF.utilVersion() >> 16) < LIBAVUTIL_VERSION_MAJOR
 	)
 	{
-		return libavSatisfied = freeLibAV();
+		return (libavSatisfied = freeLibAV());
 	}
 
 	if (!initLibAVFunctions())
-		return libavSatisfied = freeLibAV();
+		return (libavSatisfied = freeLibAV());
 
 	// initialize
 	avF.registerAll();
@@ -197,19 +197,22 @@ bool isSupported()
 		avF.formatFreeContext(x);
 	}
 
-	// check libx264. Will use fallbacks
-	if (avF.codecFindEncoderByName(usedEncoder = "libx264") == nullptr)
-		// okay. Try libvpx-vp9 if it's not mp4 muxer
-		if (avF.codecFindEncoderByName(usedEncoder = "libvpx-vp9") == nullptr)
-			// okay. Try mpeg4
-			if (avF.codecFindEncoderByName(usedEncoder = "mpeg4") == nullptr)
-			{
-				// no video encoder??
-				encodingSupported = false;
-				return libavSatisfied;
-			}
+	// check libx264rgb. Will use fallbacks
+	if (avF.codecFindEncoderByName(usedEncoder = "libx264rgb") == nullptr)
+		// no x264rgb. try normal x264.
+		if (avF.codecFindEncoderByName(usedEncoder = "libx264") == nullptr)
+			// okay. Try libvpx-vp9 if it's not mp4 muxer
+			if (avF.codecFindEncoderByName(usedEncoder = "libvpx-vp9") == nullptr)
+				// okay. Try mpeg4
+				if (avF.codecFindEncoderByName(usedEncoder = "mpeg4") == nullptr)
+				{
+					// no video encoder??
+					encodingSupported = false;
+					return libavSatisfied;
+				}
 
-	return encodingSupported = true;
+	encodingSupported = true;
+	return true;
 }
 
 AVFormatContext *g_FormatContext = nullptr;
@@ -271,11 +274,15 @@ bool startSession(const char *output, int width, int height, int framerate)
 	g_VCodecContext->time_base = {1, framerate};
 	g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// x264-specific: use qp=0 and preset=slow
-	if (strcmp(usedEncoder, "libx264") == 0)
+	if (strstr(usedEncoder, "libx264"))
 	{
-		g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV444P;
 		avF.optSet(g_VCodecContext->priv_data, "crf", "0", 0);
 		avF.optSet(g_VCodecContext->priv_data, "preset", "medium", 0);
+		
+		if (strcmp(usedEncoder, "libx264rgb") == 0)
+			g_VCodecContext->pix_fmt = AV_PIX_FMT_RGB24;
+		else if (strcmp(usedEncoder, "libx264") == 0)
+			g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV444P;
 	}
 	// libvpx-vp9-specific: use lossless=1
 	else if (strcmp(usedEncoder, "libvpx-vp9") == 0)
@@ -416,7 +423,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 
 	// use "video" stream for cover art
 	AVStream *aStream = nullptr, *vStream = nullptr;
-	for (int i = 0; i < fmtContext->nb_streams && aStream == nullptr && vStream == nullptr; i++)
+	for (unsigned int i = 0; i < fmtContext->nb_streams && aStream == nullptr && vStream == nullptr; i++)
 	{
 		auto x = fmtContext->streams[i]->codecpar->codec_type;
 		if (x == AVMEDIA_TYPE_AUDIO && aStream == nullptr)
@@ -462,6 +469,13 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	if (vCodec)
 		if ((vCodecCtx = avF.codecAllocContext(vCodec)) == nullptr)
 			goto cleanup;
+
+	// initialize parameters
+	avF.codecParametersToContext(aCodecCtx, aStream->codecpar);
+	if (aCodecCtx->channel_layout == 0)
+		aCodecCtx->channel_layout = avF.getDefaultChannelLayout(aCodecCtx->channels);
+
+	// open codec
 	if (avF.codecOpen(aCodecCtx, aCodec, nullptr) < 0 || (vCodec && avF.codecOpen(vCodecCtx, vCodec, nullptr) < 0))
 		goto cleanup;
 
@@ -469,10 +483,10 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	swr = avF.swrAllocSetOpts(nullptr,
 		AV_CH_LAYOUT_STEREO,
 		AV_SAMPLE_FMT_S16,
-		aStream->codecpar->sample_rate,
-		aStream->codecpar->channel_layout,
-		AVSampleFormat(aStream->codecpar->format),
-		aStream->codecpar->sample_rate,
+		aCodecCtx->sample_rate,
+		aCodecCtx->channel_layout,
+		aCodecCtx->sample_fmt,
+		aCodecCtx->sample_rate,
 		0, nullptr
 	);
 	if (avF.swrInit(swr) < 0)
@@ -608,14 +622,14 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 		AVFrame *frame = avF.frameAlloc();
 		frame->format = AV_SAMPLE_FMT_S16;
 		frame->channel_layout = AV_CH_LAYOUT_STEREO;
-		frame->nb_samples = delay;
+		frame->nb_samples = (int) delay;
 		if (avF.frameGetBuffer(frame, 0) < 0)
 		{
 			avF.frameFree(&frame);
 			deleteQueue(ret);
 			goto cleanup;
 		}
-		avF.swrConvert(swr, frame->data, delay, nullptr, 0);
+		avF.swrConvert(swr, frame->data, (int) delay, nullptr, 0);
 		ret->push(frame);
 		audioLen += frame->nb_samples;
 	}

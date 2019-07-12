@@ -90,9 +90,9 @@ bool mixSample(const short *data, size_t smpLen, int channelCount, float volume)
 		{
 			for (size_t i = 0; i < maxLen; i++)
 			{
-				short smp = CLAMP<float>(float(data[i]) * vol, -32767.0, 32767.0);
-				g_BufferData[i * 2] = CLAMP<int>(g_BufferData[i * 2] + smp, -32767, 32767);
-				g_BufferData[i * 2 + 1] = CLAMP<int>(g_BufferData[i * 2 + 1] + smp, -32767, 32767);
+				short smp = (short) CLAMP<float>(float(data[i]) * vol, -32767.0, 32767.0);
+				g_BufferData[i * 2] = (short) CLAMP<int>(g_BufferData[i * 2] + smp, -32767, 32767);
+				g_BufferData[i * 2 + 1] = (short) CLAMP<int>(g_BufferData[i * 2 + 1] + smp, -32767, 32767);
 			}
 			break;
 		}
@@ -100,10 +100,10 @@ bool mixSample(const short *data, size_t smpLen, int channelCount, float volume)
 		{
 			for(size_t i = 0; i < maxLen; i++)
 			{
-				short smp1 = CLAMP<float>(float(data[i * 2]) * vol, -32767.0, 32767.0);
-				short smp2 = CLAMP<float>(float(data[i * 2 + 1]) * vol, -32767.0, 32767.0);
-				g_BufferData[i * 2] = CLAMP<int>(g_BufferData[i * 2] + smp1, -32767, 32767);
-				g_BufferData[i * 2 + 1] = CLAMP<int>(g_BufferData[i * 2 + 1] + smp2, -32767, 32767);
+				short smp1 = (short) CLAMP<float>(float(data[i * 2]) * vol, -32767.0, 32767.0);
+				short smp2 = (short) CLAMP<float>(float(data[i * 2 + 1]) * vol, -32767.0, 32767.0);
+				g_BufferData[i * 2] = (short) CLAMP<int>(g_BufferData[i * 2] + smp1, -32767, 32767);
+				g_BufferData[i * 2 + 1] = (short) CLAMP<int>(g_BufferData[i * 2 + 1] + smp2, -32767, 32767);
 			}
 			break;
 		}
