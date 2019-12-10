@@ -119,9 +119,9 @@ const char *scalarType()
 const std::map<std::string, void*> &getFunctions()
 {
 	static std::map<std::string, void*> funcs = {
-		{"fftr1", (void(*)(const short *, kiss_fft_scalar *, kiss_fft_scalar *, size_t))fftr},
-		{"fftr2", (void(*)(const short *, kiss_fft_scalar *, size_t, bool))fftr},
-		{"scalarType", scalarType}
+		{"fftr1", (void*) (void(*)(const short *, kiss_fft_scalar *, kiss_fft_scalar *, size_t))fftr},
+		{"fftr2", (void*) (void(*)(const short *, kiss_fft_scalar *, size_t, bool))fftr},
+		{"scalarType", (void*) scalarType}
 	};
 	return funcs;
 }
