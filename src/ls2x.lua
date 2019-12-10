@@ -7,6 +7,7 @@ local haslib, lib = pcall(require, "ls2xlib")
 
 if not(haslib) then
 	-- no features
+    io.stderr:write("warning: no features.\n", lib)
 	return ls2x
 end
 

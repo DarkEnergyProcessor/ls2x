@@ -98,6 +98,7 @@ else()
 	message(STATUS "LOVE not found (shared lib mode)")
 endif()
 
+set_target_properties(ls2xlib PROPERTIES PREFIX "")
 target_include_directories(ls2xlib PRIVATE ${LS2X_INCLUDE})
 target_compile_definitions(ls2xlib PRIVATE ${LS2X_DEFINES})
 
