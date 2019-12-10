@@ -75,8 +75,12 @@ bool initAVDLL()
 bool initLibAVFunctions()
 {
 	// registration
+#if LIBAVFORMAT_VERSION_MAJOR < 58
 	LOAD(lavf, registerAll, av_register_all);
+#endif
+#if LIBAVCODEC_VERSION_MAJOR < 58
 	LOAD(lavc, codecRegisterAll, avcodec_register_all);
+#endif
 	// lavf
 	LOAD(lavf, formatOpenInput, avformat_open_input);
 	LOAD(lavf, formatAllocContext, avformat_alloc_context);
@@ -181,8 +185,12 @@ bool isSupported()
 		return (libavSatisfied = freeLibAV());
 
 	// initialize
+#if LIBAVFORMAT_VERSION_MAJOR < 58
 	avF.registerAll();
+#endif
+#if LIBAVCODEC_VERSION_MAJOR < 58
 	avF.codecRegisterAll();
+#endif
 	libavSatisfied = true;
 
 	// make sure there's matroska muxer
