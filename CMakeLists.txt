@@ -51,13 +51,17 @@ set(LS2X_SOURCE_FILES src/main.cpp)
 set(LS2X_DEFINES "")
 set(LS2X_INCLUDE ${DESIRED_LUA_INCLUDE_DIR})
 
+if (WIN32)
+	list(APPEND LS2X_DEFINES LUA_BUILD_AS_DLL)
+endif()
+
 # Audiomix routine, always supported
 list(APPEND LS2X_SOURCE_FILES src/audiomix.cpp)
 
 # KissFFT
 if (NOT LS2X_DISABLE_FFT)
 	list(APPEND LS2X_SOURCE_FILES src/fft.cpp src/kissfft/kiss_fft.c)
-	list(APPEND LS2X_DEFINES LS2X_USE_KISSFFT)
+	list(APPEND LS2X_DEFINES LS2X_USE_KISSFFT kiss_fft_scalar=double)
 endif()
 
 # libav

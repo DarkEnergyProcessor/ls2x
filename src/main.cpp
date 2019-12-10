@@ -1,5 +1,5 @@
 // Live Simulator: 2 Extensions
-// Copyright(c) 2039 Dark Energy Processor
+// Copyright(c) 2040 Dark Energy Processor
 //
 // This software is provided 'as-is',without any express or implied
 // warranty.In no event will the authors be held liable for any damages
@@ -37,12 +37,21 @@ int luaopen_lvep(lua_State *L);
 #include <string>
 #include <map>
 
+union FunctionString
+{
+	const void *ptr;
+	const char str[sizeof(void*)];
+};
+
 void registerFunc(lua_State *L, int idx, const std::map<std::string, void*> &func)
 {
+	static FunctionString fstr = {};
+
 	for (auto &x: func)
 	{
+		fstr.ptr = x.second;
 		lua_pushstring(L, x.first.c_str());
-		lua_pushlightuserdata(L, x.second);
+		lua_pushlstring(L, fstr.str, sizeof(void*));
 		lua_rawset(L, idx);
 	}
 }
@@ -56,7 +65,7 @@ extern "C" int luaopen_ls2xlib(lua_State *L)
 	lua_newtable(L);
 	int baseTable = lua_gettop(L);
 	lua_pushstring(L, "_VERSION");
-	lua_pushstring(L, "0.1");
+	lua_pushstring(L, "1.0");
 	lua_rawset(L, -3);
 	// rawptr
 	lua_pushstring(L, "rawptr");
