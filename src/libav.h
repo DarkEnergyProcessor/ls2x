@@ -36,8 +36,12 @@ struct libavFunctions
 	decltype(avformat_version) *formatVersion; // lavf
 	decltype(avutil_version) *utilVersion; // lavu
 	// registration
+#if LIBAVFORMAT_VERSION_MAJOR < 58
 	decltype(av_register_all) *registerAll; // lavf
+#endif
+#if LIBAVCODEC_VERSION_MAJOR < 58
 	decltype(avcodec_register_all) *codecRegisterAll; // lavc
+#endif
 	// format
 	decltype(avformat_open_input) *formatOpenInput; // lavf
 	decltype(avformat_alloc_context) *formatAllocContext; // lavf

@@ -6,7 +6,7 @@
 #ifndef _LS2X_FFT_
 #define _LS2X_FFT_
 
-#include "kiss_fft.h"
+#include "kissfft/kiss_fft.h"
 
 extern "C"
 {
