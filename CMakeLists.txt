@@ -27,6 +27,8 @@ endif()
 find_path(LS2X_LIBAV_INCLUDE_DIR
 	NAMES libavcodec/avcodec.h
 	PATHS
+	${LIBAV_INCLUDE_DIR}
+	$ENV{LIBAV_INCLUDE_DIR}
 	~/Library/Frameworks
 	/Library/Frameworks
 	/usr/local/include
@@ -36,8 +38,6 @@ find_path(LS2X_LIBAV_INCLUDE_DIR
 	/opt/csw/include # Blastwave
 	/opt/include
 	/usr/freeware/include
-	${LIBAV_INCLUDE_DIR}
-	$ENV{LIBAV_INCLUDE_DIR}
 )
 
 if (LS2X_LIBAV_INCLUDE_DIR)
