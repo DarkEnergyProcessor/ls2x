@@ -1,0 +1,57 @@
+name: LS2X-CI
+
+on: [push]
+
+jobs:
+  build-linux:
+    name: LS2X-Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Install FFmpeg Development Libraries
+      run: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev --assume-yes
+    - name: Install LuaJIT Development Libraries
+      run: sudo apt-get install libluajit-5.1-dev
+    - name: Configure
+      run: cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=Release
+    - name: Build
+      run: cmake --build build --target install
+  build-windows:
+    name: LS2X-Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        ffmpeg-branch: [n3.0, n4.0]
+        arch: [Win32, x64]
+    env:
+      FFMPEG_TAG: ${{ matrix.ffmpeg-branch }}
+      BUILD_ARCH: ${{ matrix.arch }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Shallow Clone FFmpeg
+      shell: cmd
+      run: git clone --depth 1 -b %FFMPEG_TAG% https://github.com/FFmpeg/FFmpeg
+    - name: Shallow Clone LuaJIT
+      shell: cmd
+      run: git clone --depth 1 -b v2.1 https://github.com/LuaJIT/LuaJIT
+    - name: Build LuaJIT
+      shell: cmd
+      run: |
+        rem https://help.github.com/en/actions/automating-your-workflow-with-github-actions/software-installed-on-github-hosted-runners#visual-studio-2019-enterprise
+        set VCBT="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+        if %BUILD_ARCH% == Win32 (
+          call %VCBT% x86
+        ) else (
+          call %VCBT% x86_amd64
+        )
+        cd LuaJIT\src
+        msvcbuild.bat
+        cd ..\..
+    - name: Configure
+      shell: cmd
+      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT -DLIBAV_INCLUDE_DIR=%CD%\FFmpeg -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
+    - name: Build
+      shell: cmd
+      run: cmake --build build --config Release --target install
