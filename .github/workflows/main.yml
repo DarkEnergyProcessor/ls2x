@@ -9,6 +9,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v1
+    - name: Update APT
+      run: sudo apt-get update
     - name: Install FFmpeg Development Libraries
       run: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev --assume-yes
     - name: Install LuaJIT Development Libraries
@@ -47,11 +49,11 @@ jobs:
           call %VCBT% x86_amd64
         )
         cd LuaJIT\src
-        msvcbuild.bat
+        msvcbuild.bat amalg
         cd ..\..
     - name: Configure
       shell: cmd
-      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT -DLIBAV_INCLUDE_DIR=%CD%\FFmpeg -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
+      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\FFmpeg -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
     - name: Build
       shell: cmd
       run: cmake --build build --config Release --target install
