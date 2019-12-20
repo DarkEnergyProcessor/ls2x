@@ -18,7 +18,7 @@ Requirements
 
 * VS 2013
 
-* FFmpeg 3.1 or later. FFmpeg 4.0 is supported (but matroska muxing fails)!
+* FFmpeg 3.1 or later. FFmpeg 4.0 is supported.
 
 External Libraries
 ------------------

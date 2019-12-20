@@ -270,6 +270,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 	AVStream *vStream = avF.formatNewStream(g_FormatContext, vCodec);
 	vStream->id = g_FormatContext->nb_streams - 1;
 	vStream->time_base = {1, framerate};
+	vStream->avg_frame_rate = {framerate, 1};
 	// new codec context
 	g_VCodecContext = avF.codecAllocContext(vCodec);
 	if (g_VCodecContext == nullptr)
@@ -280,6 +281,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 	g_VCodecContext->width = width;
 	g_VCodecContext->height = height;
 	g_VCodecContext->time_base = {1, framerate};
+	g_VCodecContext->framerate = {framerate, 1};
 	g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	// x264-specific: use qp=0 and preset=slow
 	if (strstr(usedEncoder, "libx264"))
@@ -288,9 +290,11 @@ bool startSession(const char *output, int width, int height, int framerate)
 		avF.optSet(g_VCodecContext->priv_data, "preset", "medium", 0);
 		
 		if (strcmp(usedEncoder, "libx264rgb") == 0)
-			g_VCodecContext->pix_fmt = AV_PIX_FMT_RGB24;
+			g_VCodecContext->pix_fmt = AV_PIX_FMT_BGR0;
 		else if (strcmp(usedEncoder, "libx264") == 0)
 			g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV444P;
+		
+		// https://stackoverflow.com/a/58921074
 	}
 	// libvpx-vp9-specific: use lossless=1
 	else if (strcmp(usedEncoder, "libvpx-vp9") == 0)
@@ -298,15 +302,19 @@ bool startSession(const char *output, int width, int height, int framerate)
 		g_VCodecContext->pix_fmt = AV_PIX_FMT_GBRP;
 		avF.optSet(g_VCodecContext->priv_data, "lossless", "1", 0);
 	}
+
 	// this cause problem in H264 decoding (but the encoding is ok)
-	//if (g_FormatContext->oformat->flags & AVFMT_GLOBALHEADER)
-		//g_VCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-	avF.codecParametersFromContext(vStream->codecpar, g_VCodecContext);
+	if (g_FormatContext->oformat->flags & AVFMT_GLOBALHEADER)
+		g_VCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+	// Open codec
 	if (avF.codecOpen(g_VCodecContext, vCodec, nullptr) < 0)
 	{
 		clean();
 		return false;
 	}
+	avF.codecParametersFromContext(vStream->codecpar, g_VCodecContext);
+
 	// new video frame
 	g_VFrame = avF.frameAlloc();
 	g_VFrame->format = g_VCodecContext->pix_fmt;
@@ -332,6 +340,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 	// new packet
 	g_Packet = avF.packetAlloc();
 	if (g_Packet == nullptr) return false;
+
 	// write header
 	int ret = avF.formatWriteHeader(g_FormatContext, nullptr);
 	if (ret < 0)
@@ -433,7 +442,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	AVStream *aStream = nullptr, *vStream = nullptr;
 	for (unsigned int i = 0; i < fmtContext->nb_streams && aStream == nullptr && vStream == nullptr; i++)
 	{
-		auto x = fmtContext->streams[i]->codecpar->codec_type;
+		AVMediaType x = fmtContext->streams[i]->codecpar->codec_type;
 		if (x == AVMEDIA_TYPE_AUDIO && aStream == nullptr)
 			aStream = fmtContext->streams[i];
 		else if (x == AVMEDIA_TYPE_VIDEO && vStream == nullptr)

@@ -24,24 +24,24 @@ else()
 endif()
 
 # Check libav include, only include.
-if (NOT LIBAV_INCLUDE_DIR)
-	find_path(LIBAV_INCLUDE_DIR
-		NAMES libavcodec/avcodec.h
-		PATHS
-		~/Library/Frameworks
-		/Library/Frameworks
-		/usr/local/include
-		/usr/include
-		/sw/include # Fink
-		/opt/local/include # DarwinPorts
-		/opt/csw/include # Blastwave
-		/opt/include
-		/usr/freeware/include
-	)
-endif()
+find_path(LS2X_LIBAV_INCLUDE_DIR
+	NAMES libavcodec/avcodec.h
+	PATHS
+	~/Library/Frameworks
+	/Library/Frameworks
+	/usr/local/include
+	/usr/include
+	/sw/include # Fink
+	/opt/local/include # DarwinPorts
+	/opt/csw/include # Blastwave
+	/opt/include
+	/usr/freeware/include
+	${LIBAV_INCLUDE_DIR}
+	$ENV{LIBAV_INCLUDE_DIR}
+)
 
-if (LIBAV_INCLUDE_DIR)
-	message(STATUS "libav include path: ${LIBAV_INCLUDE_DIR}")
+if (LS2X_LIBAV_INCLUDE_DIR)
+	message(STATUS "libav include path: ${LS2X_LIBAV_INCLUDE_DIR}")
 else()
 	message(WARNING "libav not found!")
 endif()
@@ -65,7 +65,7 @@ if (NOT LS2X_DISABLE_FFT)
 endif()
 
 # libav
-if (LIBAV_INCLUDE_DIR)
+if (LS2X_LIBAV_INCLUDE_DIR)
 	# Dynwrap first
 	if (WIN32)
 		list(APPEND LS2X_SOURCE_FILES src/dynwrap/dynwrap_win.cpp)
@@ -75,7 +75,7 @@ if (LIBAV_INCLUDE_DIR)
 
 	list(APPEND LS2X_SOURCE_FILES src/libav.cpp)
 	list(APPEND LS2X_DEFINES LS2X_USE_LIBAV)
-	list(APPEND LS2X_INCLUDE ${LIBAV_INCLUDE_DIR})
+	list(APPEND LS2X_INCLUDE ${LS2X_LIBAV_INCLUDE_DIR})
 
 	# If LOVE include dir specified then it's embedded in LOVE.
 	if (LOVE_INCLUDE_DIR)
@@ -105,6 +105,7 @@ endif()
 set_target_properties(ls2xlib PROPERTIES PREFIX "")
 target_include_directories(ls2xlib PRIVATE ${LS2X_INCLUDE})
 target_compile_definitions(ls2xlib PRIVATE ${LS2X_DEFINES})
+target_link_libraries(ls2xlib ${DESIRED_LUA_LIBRARY})
 
 # Installdir
 install(TARGETS ls2xlib DESTINATION lib)
