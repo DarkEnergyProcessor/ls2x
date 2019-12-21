@@ -1,6 +1,7 @@
 #include "LVEPVideoStream.h"
 
-#include <timer/Timer.h>
+// LOVE
+#include "timer/Timer.h"
 
 LVEPVideoStream::LVEPVideoStream(love::filesystem::File *file)
 	: stream(new FFMpegStream(file, FFMpegStream::TYPE_VIDEO))

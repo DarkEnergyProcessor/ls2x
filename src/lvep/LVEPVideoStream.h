@@ -1,17 +1,17 @@
 #pragma once
 
 // LOVE
-#include <common/Object.h>
-#include <video/VideoStream.h>
-#include <filesystem/File.h>
+#include "common/Object.h"
+#include "video/VideoStream.h"
+#include "filesystem/File.h"
 
 // FFMPEG
 extern "C"
 {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/avutil.h>
-#include <libavutil/pixdesc.h>
+#include "libavformat/avformat.h"
+#include "libavcodec/avcodec.h"
+#include "libavutil/avutil.h"
+#include "libavutil/pixdesc.h"
 }
 #include "../libav.h"
 

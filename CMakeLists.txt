@@ -10,17 +10,29 @@ if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 project(ls2xlib LANGUAGES C CXX)
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Find Lua(JIT)
-find_package(LuaJIT)
-if (NOT LUAJIT_FOUND)
-	find_package(Lua 5.1 EXACT REQUIRED)
-	set(DESIRED_LUA_INCLUDE_DIR ${LUA_INCLUDE_DIR})
-	set(DESIRED_LUA_LIBRARY ${LUA_LIBRARIES})
+if (MEGA)
+	# LOVE is guaranteed to exist
+	get_directory_property(LOVE_INCLUDE_DIR PARENT_DIRECTORY)
+	set(LOVE_INCLUDE_DIR ${LOVE_INCLUDE_DIR}/src)
+
+	if (LOVE_JIT)
+		set(DESIRED_LUA_INCLUDE_DIR ${MEGA_LUAJIT_INCLUDE})
+	else()
+		message(ERROR "Cannot use LS2X without LuaJIT")
+	endif()
 else()
-	set(DESIRED_LUA_INCLUDE_DIR ${LUAJIT_INCLUDE_DIR})
-	set(DESIRED_LUA_LIBRARY ${LUAJIT_LIBRARY})
+	# Find Lua(JIT)
+	find_package(LuaJIT)
+	if (NOT LUAJIT_FOUND)
+		find_package(Lua 5.1 EXACT REQUIRED)
+		set(DESIRED_LUA_INCLUDE_DIR ${LUA_INCLUDE_DIR})
+		set(DESIRED_LUA_LIBRARY ${LUA_LIBRARIES})
+	else()
+		set(DESIRED_LUA_INCLUDE_DIR ${LUAJIT_INCLUDE_DIR})
+		set(DESIRED_LUA_LIBRARY ${LUAJIT_LIBRARY})
+	endif()
 endif()
 
 # Check libav include, only include.
@@ -100,16 +112,15 @@ if (LOVE_INCLUDE_DIR)
 	# static library
 	add_library(ls2xlib STATIC ${LS2X_SOURCE_FILES})
 	message(STATUS "LOVE include (static lib mode): ${LOVE_INCLUDE_DIR}")
+	target_include_directories(ls2xlib PRIVATE ${LOVE_INCLUDE_DIR}/modules)
 else()
 	# shared library
 	add_library(ls2xlib SHARED ${LS2X_SOURCE_FILES})
 	message(STATUS "LOVE not found (shared lib mode)")
+	install(TARGETS ls2xlib DESTINATION lib)
+	target_link_libraries(ls2xlib ${DESIRED_LUA_LIBRARY})
 endif()
 
 set_target_properties(ls2xlib PROPERTIES PREFIX "")
 target_include_directories(ls2xlib PRIVATE ${LS2X_INCLUDE})
 target_compile_definitions(ls2xlib PRIVATE ${LS2X_DEFINES})
-target_link_libraries(ls2xlib ${DESIRED_LUA_LIBRARY})
-
-# Installdir
-install(TARGETS ls2xlib DESTINATION lib)

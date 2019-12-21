@@ -3,13 +3,13 @@
 #include "FFMpegStream.h"
 
 // LOVE
-#include <filesystem/File.h>
-#include <sound/Decoder.h>
+#include "filesystem/File.h"
+#include "sound/Decoder.h"
 
 // FFMPEG
 extern "C"
 {
-#include <libswresample/swresample.h>
+#include "libswresample/swresample.h"
 }
 #include "../libav.h"
 
@@ -17,7 +17,6 @@ class LVEPDecoder : public love::sound::Decoder
 {
 public:
 	LVEPDecoder(love::filesystem::FileData *data, int bufferSize);
-	LVEPDecoder(love::Data *data, const std::string &ext, int bufferSize);
 	virtual ~LVEPDecoder();
 
 	love::sound::Decoder *clone();

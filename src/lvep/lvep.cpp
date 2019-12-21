@@ -6,8 +6,8 @@
 #include <lua.hpp>
 
 // LOVE
-#include <common/runtime.h>
-#include <filesystem/wrap_Filesystem.h>
+#include "common/runtime.h"
+#include "filesystem/wrap_Filesystem.h"
 
 // libav
 extern "C"
