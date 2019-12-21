@@ -64,84 +64,21 @@ bool initAVDLL()
 #define STR(x) #x
 
 #ifdef LS2X_LIBAV_LINKED
-#define LOAD(_, var, name) \
+#define LOAD_AVFUNC(_, var, name) \
 	avF.var = &##name;
 #else
-#define LOAD(avtype, var, name) \
+#define LOAD_AVFUNC(avtype, var, name) \
 	avF.var = (decltype(name)*) avF.avtype->getSymbol(STR(name)); \
 	if (avF.var == nullptr) return false;
 #endif
 
 bool initLibAVFunctions()
 {
-	// registration
-#if LIBAVFORMAT_VERSION_MAJOR < 58
-	LOAD(lavf, registerAll, av_register_all);
-#endif
-#if LIBAVCODEC_VERSION_MAJOR < 58
-	LOAD(lavc, codecRegisterAll, avcodec_register_all);
-#endif
-	// lavf
-	LOAD(lavf, formatOpenInput, avformat_open_input);
-	LOAD(lavf, formatAllocContext, avformat_alloc_context);
-	LOAD(lavf, formatAllocOutputContext, avformat_alloc_output_context2);
-	LOAD(lavf, formatFindStreamInfo, avformat_find_stream_info);
-	LOAD(lavf, readPacket, av_read_frame);
-	LOAD(lavf, ioOpen, avio_open);
-	LOAD(lavf, ioClose, avio_closep);
-	LOAD(lavf, interleavedWriteFrame, av_interleaved_write_frame);
-	LOAD(lavf, formatInitOutput, avformat_init_output);
-	LOAD(lavf, writeTrailer, av_write_trailer);
-	LOAD(lavf, formatWriteHeader, avformat_write_header);
-	LOAD(lavf, formatFreeContext, avformat_free_context);
-	LOAD(lavf, formatNewStream, avformat_new_stream);
-	LOAD(lavf, dumpFormat, av_dump_format);
-	LOAD(lavf, formatCloseInput, avformat_close_input);
-	LOAD(lavf, seekFrame, av_seek_frame);
-	LOAD(lavf, ioAllocContext, avio_alloc_context);
-	// lavc
-	LOAD(lavc, codecAllocContext, avcodec_alloc_context3);
-	LOAD(lavc, codecFindEncoderByName, avcodec_find_encoder_by_name);
-	LOAD(lavc, codecFindDecoder, avcodec_find_decoder);
-	LOAD(lavc, codecOpen, avcodec_open2);
-	LOAD(lavc, codecSendPacket, avcodec_send_packet);
-	LOAD(lavc, codecReceivePacket, avcodec_receive_packet);
-	LOAD(lavc, codecSendFrame, avcodec_send_frame);
-	LOAD(lavc, codecReceiveFrame, avcodec_receive_frame);
-	LOAD(lavc, packetFree, av_packet_free);
-	LOAD(lavc, codecFreeContext, avcodec_free_context);
-	LOAD(lavc, codecParametersFromContext, avcodec_parameters_from_context);
-	LOAD(lavc, codecParametersToContext, avcodec_parameters_to_context);
-	LOAD(lavc, packetAlloc, av_packet_alloc);
-	LOAD(lavc, packetRescaleTS, av_packet_rescale_ts);
-	LOAD(lavc, packetUnref, av_packet_unref);
-	LOAD(lavc, flushBuffers, avcodec_flush_buffers);
-	// lavu
-	LOAD(lavu, frameAlloc, av_frame_alloc);
-	LOAD(lavu, frameGetBuffer, av_frame_get_buffer);
-	LOAD(lavu, frameMakeWritable, av_frame_make_writable);
-	LOAD(lavu, frameFree, av_frame_free);
-	LOAD(lavu, optSet, av_opt_set);
-	LOAD(lavu, dictCount, av_dict_count);
-	LOAD(lavu, dictGet, av_dict_get);
-	LOAD(lavu, strdup, av_strdup);
-	LOAD(lavu, malloc, av_mallocz);
-	LOAD(lavu, free, av_free);
-	LOAD(lavu, strerror, av_strerror);
-	LOAD(lavu, logSetLevel, av_log_set_level);
-	LOAD(lavu, getDefaultChannelLayout, av_get_default_channel_layout);
-	// sws
-	LOAD(sws, swsGetContext, sws_getContext);
-	LOAD(sws, swsScale, sws_scale);
-	LOAD(sws, swsFreeContext, sws_freeContext);
-	// swr
-	LOAD(swr, swrAllocSetOpts, swr_alloc_set_opts);
-	LOAD(swr, swrInit, swr_init);
-	LOAD(swr, swrConvertFrame, swr_convert_frame);
-	LOAD(swr, swrGetDelay, swr_get_delay);
-	LOAD(swr, swrConvert, swr_convert);
-	LOAD(swr, swrFree, swr_free);
+#define LS2X_NOLOAD_VERSIONING
+#include "libavfunc.h"
+#undef LS2X_NOLOAD_VERSIONING
 	// done
+	avF.logSetLevel(AV_LOG_TRACE);
 	return true;
 }
 
@@ -167,19 +104,17 @@ bool isSupported()
 		return false;
 
 	// register very basic functions
-	LOAD(lavc, codecVersion, avcodec_version);
-	LOAD(lavf, formatVersion, avformat_version);
-	LOAD(lavu, utilVersion, avutil_version);
+	LOAD_AVFUNC(lavc, codecVersion, avcodec_version);
+	LOAD_AVFUNC(lavf, formatVersion, avformat_version);
+	LOAD_AVFUNC(lavu, utilVersion, avutil_version);
 
 	// check version
 	if (
-		(avF.codecVersion() >> 16) < LIBAVCODEC_VERSION_MAJOR ||
-		(avF.formatVersion() >> 16) < LIBAVFORMAT_VERSION_MAJOR ||
-		(avF.utilVersion() >> 16) < LIBAVUTIL_VERSION_MAJOR
+		avF.codecVersion() < LIBAVCODEC_VERSION_INT ||
+		avF.formatVersion()  < LIBAVFORMAT_VERSION_INT ||
+		avF.utilVersion() < LIBAVUTIL_VERSION_INT
 	)
-	{
 		return (libavSatisfied = freeLibAV());
-	}
 
 	if (!initLibAVFunctions())
 		return (libavSatisfied = freeLibAV());
@@ -271,6 +206,9 @@ bool startSession(const char *output, int width, int height, int framerate)
 	vStream->id = g_FormatContext->nb_streams - 1;
 	vStream->time_base = {1, framerate};
 	vStream->avg_frame_rate = {framerate, 1};
+	vStream->codecpar->width = width;
+	vStream->codecpar->height = height;
+
 	// new codec context
 	g_VCodecContext = avF.codecAllocContext(vCodec);
 	if (g_VCodecContext == nullptr)
@@ -278,24 +216,26 @@ bool startSession(const char *output, int width, int height, int framerate)
 		clean();
 		return false;
 	}
+
+	// Set codec context values
 	g_VCodecContext->width = width;
 	g_VCodecContext->height = height;
 	g_VCodecContext->time_base = {1, framerate};
 	g_VCodecContext->framerate = {framerate, 1};
 	g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV420P;
+
 	// x264-specific: use qp=0 and preset=slow
 	if (strstr(usedEncoder, "libx264"))
 	{
 		avF.optSet(g_VCodecContext->priv_data, "crf", "0", 0);
-		avF.optSet(g_VCodecContext->priv_data, "preset", "medium", 0);
+		avF.optSet(g_VCodecContext->priv_data, "preset", "slow", 0);
 		
 		if (strcmp(usedEncoder, "libx264rgb") == 0)
 			g_VCodecContext->pix_fmt = AV_PIX_FMT_BGR0;
 		else if (strcmp(usedEncoder, "libx264") == 0)
 			g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV444P;
-		
-		// https://stackoverflow.com/a/58921074
 	}
+
 	// libvpx-vp9-specific: use lossless=1
 	else if (strcmp(usedEncoder, "libvpx-vp9") == 0)
 	{
@@ -303,7 +243,6 @@ bool startSession(const char *output, int width, int height, int framerate)
 		avF.optSet(g_VCodecContext->priv_data, "lossless", "1", 0);
 	}
 
-	// this cause problem in H264 decoding (but the encoding is ok)
 	if (g_FormatContext->oformat->flags & AVFMT_GLOBALHEADER)
 		g_VCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
@@ -313,6 +252,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 		clean();
 		return false;
 	}
+
 	avF.codecParametersFromContext(vStream->codecpar, g_VCodecContext);
 
 	// new video frame
@@ -366,8 +306,9 @@ bool supply(const void *videoData)
 	const uint8_t *vData[] = {(const uint8_t*)videoData};
 	int vLinesize[] = {g_Width * 4};
 	avF.swsScale(g_SwsContext, vData, vLinesize, 0, g_Height, g_VFrame->data, g_VFrame->linesize);
-	// video encode
 	g_VFrame->pts = g_VCodecContext->frame_number;
+
+	// Video encode
 	int ret = avF.codecSendFrame(g_VCodecContext, g_VFrame);
 	if (ret < 0)
 		return false;
@@ -378,11 +319,14 @@ bool supply(const void *videoData)
 			break;
 		else if (ret < 0)
 			return false;
+
 		avF.packetRescaleTS(g_Packet, g_VCodecContext->time_base, g_FormatContext->streams[0]->time_base);
 		if (avF.interleavedWriteFrame(g_FormatContext, g_Packet) < 0)
 			return false;
+
 		avF.packetUnref(g_Packet);
 	}
+
 	return true;
 }
 
@@ -390,7 +334,7 @@ void endSession()
 {
 	if (g_FormatContext == nullptr) return;
 
-	// done
+	// Flush
 	int ret = avF.codecSendFrame(g_VCodecContext, nullptr);
 	while (ret >= 0)
 	{
@@ -402,6 +346,7 @@ void endSession()
 		}
 		avF.packetUnref(g_Packet);
 	}
+
 	// write trailer
 	avF.interleavedWriteFrame(g_FormatContext, nullptr);
 	avF.writeTrailer(g_FormatContext);
@@ -443,6 +388,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	for (unsigned int i = 0; i < fmtContext->nb_streams && aStream == nullptr && vStream == nullptr; i++)
 	{
 		AVMediaType x = fmtContext->streams[i]->codecpar->codec_type;
+
 		if (x == AVMEDIA_TYPE_AUDIO && aStream == nullptr)
 			aStream = fmtContext->streams[i];
 		else if (x == AVMEDIA_TYPE_VIDEO && vStream == nullptr)
@@ -468,6 +414,8 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 			entry = avF.dictGet(fmtContext->metadata, "", entry, AV_DICT_IGNORE_SUFFIX);
 		}
 	}
+
+	// Set sample rate
 	sInfo->sampleRate = aStream->codecpar->sample_rate;
 
 	// get codec
@@ -512,7 +460,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	{
 		sws = avF.swsGetContext(
 			vStream->codecpar->width, vStream->codecpar->height,
-			AVPixelFormat(vStream->codecpar->format),
+			(AVPixelFormat) vStream->codecpar->format,
 			vStream->codecpar->width, vStream->codecpar->height,
 			AV_PIX_FMT_RGBA,
 			SWS_BILINEAR,
@@ -528,6 +476,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	ret = new std::queue<AVFrame*>;
 	audioLen = 0;
 	rval = avF.readPacket(fmtContext, packet);
+
 	while (rval >= 0)
 	{
 		bool isV = vStream && packet->stream_index == vStream->id;
@@ -536,6 +485,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 		if (processPacket)
 		{
 			AVCodecContext *ctx = isV ? vCodecCtx : aCodecCtx;
+
 			int r = avF.codecSendPacket(ctx, packet);
 			if (r < 0)
 			{
@@ -620,6 +570,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 				frame->format = AV_SAMPLE_FMT_S16;
 				frame->nb_samples = tempFrame->nb_samples;
 				frame->channel_layout = AV_CH_LAYOUT_STEREO;
+
 				// swr_convert_frame will call av_frame_get_buffer
 				if (avF.swrConvertFrame(swr, frame, tempFrame) < 0)
 				{
@@ -632,6 +583,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 			}
 		}
 	}
+
 	// flush swr
 	delay = avF.swrGetDelay(swr, aStream->codecpar->sample_rate);
 	if (delay > 0)
