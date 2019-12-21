@@ -24,26 +24,30 @@ else()
 endif()
 
 # Check libav include, only include.
-find_path(LS2X_LIBAV_INCLUDE_DIR
-	NAMES libavcodec/avcodec.h
-	PATHS
-	${LIBAV_INCLUDE_DIR}
-	$ENV{LIBAV_INCLUDE_DIR}
-	~/Library/Frameworks
-	/Library/Frameworks
-	/usr/local/include
-	/usr/include
-	/sw/include # Fink
-	/opt/local/include # DarwinPorts
-	/opt/csw/include # Blastwave
-	/opt/include
-	/usr/freeware/include
-)
+if (NOT LS2X_NO_LIBAV)
+	find_path(LS2X_LIBAV_INCLUDE_DIR
+		NAMES libavcodec/avcodec.h
+		PATHS
+		${LIBAV_INCLUDE_DIR}
+		$ENV{LIBAV_INCLUDE_DIR}
+		~/Library/Frameworks
+		/Library/Frameworks
+		/usr/local/include
+		/usr/include
+		/sw/include # Fink
+		/opt/local/include # DarwinPorts
+		/opt/csw/include # Blastwave
+		/opt/include
+		/usr/freeware/include
+	)
 
-if (LS2X_LIBAV_INCLUDE_DIR)
-	message(STATUS "libav include path: ${LS2X_LIBAV_INCLUDE_DIR}")
+	if (LS2X_LIBAV_INCLUDE_DIR)
+		message(STATUS "libav include path: ${LS2X_LIBAV_INCLUDE_DIR}")
+	else()
+		message(WARNING "libav not found!")
+	endif()
 else()
-	message(WARNING "libav not found!")
+	message(STATUS "libav support is disabled")
 endif()
 
 # Source Files

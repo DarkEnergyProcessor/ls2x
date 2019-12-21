@@ -24,7 +24,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        ffmpeg-branch: [n3.0, n4.0]
+        ffmpeg-branch: [3.2, 4.0]
         arch: [Win32, x64]
     env:
       FFMPEG_TAG: ${{ matrix.ffmpeg-branch }}
@@ -32,15 +32,11 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v1
-    - name: Shallow Clone FFmpeg
+    - name: Download FFmpeg Development Libraries
       shell: cmd
       run: |
-        git clone --depth 1 -b %FFMPEG_TAG% https://github.com/FFmpeg/FFmpeg
-        echo #ifndef AVUTIL_AVCONFIG_H >> FFmpeg\libavutil\avconfig.h
-        echo #define AVUTIL_AVCONFIG_H >> FFmpeg\libavutil\avconfig.h
-        echo #define AV_HAVE_BIGENDIAN 0 >> FFmpeg\libavutil\avconfig.h
-        echo #define AV_HAVE_FAST_UNALIGNED 1 >> FFmpeg\libavutil\avconfig.h
-        echo #endif >> FFmpeg\libavutil\avconfig.h
+        powershell -command wget -Uri https://ffmpeg.zeranoe.com/builds/win64/dev/ffmpeg-%FFMPEG_TAG%-win64-dev.zip -OutFile ffmpeg-dev.zip
+        7z x ffmpeg-dev.zip
     - name: Shallow Clone LuaJIT
       shell: cmd
       run: git clone --depth 1 -b v2.1 https://github.com/LuaJIT/LuaJIT
@@ -59,7 +55,12 @@ jobs:
         cd ..\..
     - name: Configure
       shell: cmd
-      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\FFmpeg -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
+      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\ffmpeg-%FFMPEG_TAG%-win64-dev\include -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
     - name: Build
       shell: cmd
       run: cmake --build build --config Release --target install
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: ls2xlib-${{ matrix.arch }}-ffmpeg${{ matrix.ffmpeg-branch }}
+        path: install/lib
