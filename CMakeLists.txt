@@ -12,11 +12,14 @@ endif()
 project(ls2xlib LANGUAGES C CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if (MEGA)
-	# LOVE is guaranteed to exist
+if (LOVE_SRC_COMMON)
+	# LOVE exist and this is added via add_subdirectory
 	get_directory_property(LOVE_INCLUDE_DIR PARENT_DIRECTORY)
 	set(LOVE_INCLUDE_DIR ${LOVE_INCLUDE_DIR}/src)
+endif()
 
+if (MEGA)
+	# Dependencies brought along with build system
 	if (LOVE_JIT)
 		set(DESIRED_LUA_INCLUDE_DIR ${MEGA_LUAJIT_INCLUDE})
 	else()

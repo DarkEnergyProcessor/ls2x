@@ -39,8 +39,7 @@ LVEPDecoder::~LVEPDecoder()
 
 love::sound::Decoder *LVEPDecoder::clone()
 {
-	// FIXME?
-	throw love::Exception("LVEP does not support cloning Decoders");
+	return new LVEPDecoder((love::filesystem::FileData *) data.get(), bufferSize);
 }
 
 int LVEPDecoder::getSize() const
@@ -69,7 +68,7 @@ int LVEPDecoder::decode()
 	return decoded*frame->channels*2;
 }
 
-bool LVEPDecoder::seek(float s)
+bool LVEPDecoder::seek(double s)
 {
 	eof = false;
 	return stream.seek(s);

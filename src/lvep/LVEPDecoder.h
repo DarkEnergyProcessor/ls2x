@@ -19,23 +19,22 @@ public:
 	LVEPDecoder(love::filesystem::FileData *data, int bufferSize);
 	virtual ~LVEPDecoder();
 
-	love::sound::Decoder *clone();
-	int decode();
-	int getSize() const;
-	void *getBuffer() const;
-	bool seek(float s);
-	bool rewind();
-	bool isSeekable();
-	bool isFinished();
-	int getChannelCount() const;
-	int getBitDepth() const;
-	int getSampleRate() const;
-	double getDuration();
+	love::sound::Decoder *clone() override;
+	int decode() override;
+	int getSize() const override;
+	void *getBuffer() const override;
+	bool seek(double s) override;
+	bool rewind() override;
+	bool isSeekable() override;
+	bool isFinished() override;
+	int getChannelCount() const override;
+	int getBitDepth() const override;
+	int getSampleRate() const override;
+	double getDuration() override;
 
 private:
 	ls2x::libav::libavFunctions *f;
 	FFMpegStream stream;
 	AVFrame *frame;
 	SwrContext *recodeContext;
-	love::StrongRef<love::filesystem::File> file;
 };

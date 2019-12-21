@@ -61,8 +61,6 @@ int w_newDecoder(lua_State *L)
 extern "C" int luaopen_lvep(lua_State *L)
 {
 	auto f = ls2x::libav::getFunctionPointer();
-	f->registerAll();
-	f->codecRegisterAll();
 
 	lua_newtable(L);
 	lua_pushcfunction(L, w_newVideoStream);
