@@ -24,7 +24,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        ffmpeg-branch: [3.2, 4.0]
+        ffmpeg-branch: ["3.2", "4.0"]
         arch: [Win32, x64]
     env:
       FFMPEG_TAG: ${{ matrix.ffmpeg-branch }}
