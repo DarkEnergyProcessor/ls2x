@@ -78,7 +78,7 @@ bool initLibAVFunctions()
 #include "libavfunc.h"
 #undef LS2X_NOLOAD_VERSIONING
 	// done
-	avF.logSetLevel(AV_LOG_TRACE);
+	//avF.logSetLevel(AV_LOG_TRACE);
 	return true;
 }
 
