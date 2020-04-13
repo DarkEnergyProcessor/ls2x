@@ -93,13 +93,18 @@ FFMpegStream::~FFMpegStream()
 
 bool FFMpegStream::readPacket()
 {
-	int r;
+	if (packet->buf)
+		f->packetUnref(packet);
+
 	do
-		if ((r = f->readPacket(formatContext, packet)) < 0)
+	{
+		int r = f->readPacket(formatContext, packet);
+		if (r < 0)
 		{
 			printError("f->readPacket", r);
 			return false;
 		}
+	}
 	while (packet->stream_index != targetStream);
 
 	return true;
@@ -107,6 +112,9 @@ bool FFMpegStream::readPacket()
 
 bool FFMpegStream::readFrame(AVFrame *frame)
 {
+	if (frame->buf[0])
+		f->frameUnref(frame);
+
 	while (true)
 	{
 		if (!readPacket())

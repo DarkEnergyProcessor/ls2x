@@ -1,28 +1,26 @@
 #include "LFSIOContext.h"
 
 LFSIOContext::LFSIOContext(love::filesystem::File *file)
-	: bufferSize(4096)
-	, file(file)
-	, fileData(nullptr)
-	, f(ls2x::libav::getFunctionPointer())
+: file(file)
+, fileData(nullptr)
+, f(ls2x::libav::getFunctionPointer())
 {
 	if (file->isOpen())
 		file->close();
 	if (!file->open(love::filesystem::File::MODE_READ))
 		throw love::Exception("Could not open input file");
-	buffer = (unsigned char*) f->malloc(bufferSize);
-	context = f->ioAllocContext(buffer, bufferSize, 0, this, read, nullptr, seek);
+	unsigned char *buffer = (unsigned char*) f->malloc(4096);
+	context = f->ioAllocContext(buffer, 4096, 0, this, read, nullptr, seek);
 	file->retain();
 }
 
 LFSIOContext::LFSIOContext(love::Data *fileData)
-	: bufferSize(4096)
-	, file(nullptr)
-	, fileData(fileData)
-	, f(ls2x::libav::getFunctionPointer())
+: file(nullptr)
+, fileData(fileData)
+, f(ls2x::libav::getFunctionPointer())
 {
-	buffer = (unsigned char*) f->malloc(bufferSize);
-	context = f->ioAllocContext(buffer, bufferSize, 0, this, read, nullptr, seek);
+	unsigned char *buffer = (unsigned char*) f->malloc(4096);
+	context = f->ioAllocContext(buffer, 4096, 0, this, read, nullptr, seek);
 	fileData->retain();
 }
 
@@ -31,7 +29,7 @@ LFSIOContext::~LFSIOContext()
 	if (file) file->release();
 	if (fileData) fileData->release();
 	f->free(context->buffer);
-	f->free(context);
+	f->ioFreeContext(&context);
 }
 
 LFSIOContext::operator AVIOContext *()

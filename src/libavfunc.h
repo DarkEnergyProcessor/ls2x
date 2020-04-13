@@ -28,6 +28,7 @@ LOAD_AVFUNC(lavf, dumpFormat, av_dump_format);
 LOAD_AVFUNC(lavf, formatCloseInput, avformat_close_input);
 LOAD_AVFUNC(lavf, seekFrame, av_seek_frame);
 LOAD_AVFUNC(lavf, ioAllocContext, avio_alloc_context);
+LOAD_AVFUNC(lavf, ioFreeContext, avio_context_free);
 #if LIBAVFORMAT_VERSION_MAJOR < 58
 LOAD_AVFUNC(lavf, registerAll, av_register_all);
 #endif
@@ -56,6 +57,7 @@ LOAD_AVFUNC(lavu, frameAlloc, av_frame_alloc);
 LOAD_AVFUNC(lavu, frameGetBuffer, av_frame_get_buffer);
 LOAD_AVFUNC(lavu, frameMakeWritable, av_frame_make_writable);
 LOAD_AVFUNC(lavu, frameFree, av_frame_free);
+LOAD_AVFUNC(lavu, frameUnref, av_frame_unref);
 LOAD_AVFUNC(lavu, optSet, av_opt_set);
 LOAD_AVFUNC(lavu, dictCount, av_dict_count);
 LOAD_AVFUNC(lavu, dictGet, av_dict_get);
