@@ -140,19 +140,23 @@ bool isSupported()
 		avF.formatFreeContext(x);
 	}
 
-	// check libx264rgb. Will use fallbacks
-	if (avF.codecFindEncoderByName(usedEncoder = "libx264rgb") == nullptr)
-		// no x264rgb. try normal x264.
-		if (avF.codecFindEncoderByName(usedEncoder = "libx264") == nullptr)
-			// okay. Try libvpx-vp9 if it's not mp4 muxer
-			if (avF.codecFindEncoderByName(usedEncoder = "libvpx-vp9") == nullptr)
-				// okay. Try mpeg4
-				if (avF.codecFindEncoderByName(usedEncoder = "mpeg4") == nullptr)
-				{
-					// no video encoder??
-					encodingSupported = false;
-					return libavSatisfied;
-				}
+	if (
+		// Check libx264rgb. Will use fallbacks
+		avF.codecFindEncoderByName(usedEncoder = "libx264rgb") == nullptr &&
+		// No x264rgb. try normal x264.
+		avF.codecFindEncoderByName(usedEncoder = "libx264") == nullptr &&
+		// Okay. Try libvpx-vp9
+		avF.codecFindEncoderByName(usedEncoder = "libvpx-vp9") == nullptr &&
+		// Huh? PNG, must be supported everywhre, right?
+		avF.codecFindEncoderByName(usedEncoder = "png") == nullptr &&
+		// Fine, mpeg4
+		avF.codecFindEncoderByName(usedEncoder = "mpeg4") == nullptr
+	)
+	{
+		// FFmpeg is compiled with --disable-encoders???
+		encodingSupported = false;
+		return libavSatisfied;
+	}
 
 	encodingSupported = true;
 	return true;
@@ -235,13 +239,15 @@ bool startSession(const char *output, int width, int height, int framerate)
 		else if (strcmp(usedEncoder, "libx264") == 0)
 			g_VCodecContext->pix_fmt = AV_PIX_FMT_YUV444P;
 	}
-
 	// libvpx-vp9-specific: use lossless=1
 	else if (strcmp(usedEncoder, "libvpx-vp9") == 0)
 	{
 		g_VCodecContext->pix_fmt = AV_PIX_FMT_GBRP;
 		avF.optSet(g_VCodecContext->priv_data, "lossless", "1", 0);
 	}
+	// png: pixel format = rgb24
+	else if (strcmp(usedEncoder, "png") == 0)
+		g_VCodecContext->pix_fmt = AV_PIX_FMT_RGB24;
 
 	if (g_FormatContext->oformat->flags & AVFMT_GLOBALHEADER)
 		g_VCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
