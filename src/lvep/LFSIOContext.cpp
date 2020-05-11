@@ -29,7 +29,12 @@ LFSIOContext::~LFSIOContext()
 	if (file) file->release();
 	if (fileData) fileData->release();
 	f->free(context->buffer);
+
+#if LIBAVFORMAT_VERSION_MAJOR < 58
+	f->free(context);
+#else
 	f->ioFreeContext(&context);
+#endif
 }
 
 LFSIOContext::operator AVIOContext *()

@@ -28,9 +28,10 @@ LOAD_AVFUNC(lavf, dumpFormat, av_dump_format);
 LOAD_AVFUNC(lavf, formatCloseInput, avformat_close_input);
 LOAD_AVFUNC(lavf, seekFrame, av_seek_frame);
 LOAD_AVFUNC(lavf, ioAllocContext, avio_alloc_context);
-LOAD_AVFUNC(lavf, ioFreeContext, avio_context_free);
 #if LIBAVFORMAT_VERSION_MAJOR < 58
 LOAD_AVFUNC(lavf, registerAll, av_register_all);
+#else
+LOAD_AVFUNC(lavf, ioFreeContext, avio_context_free);
 #endif
 // lavc
 LOAD_AVFUNC(lavc, codecAllocContext, avcodec_alloc_context3);
