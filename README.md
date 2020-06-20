@@ -18,14 +18,14 @@ Requirements
 
 * VS 2013
 
-* FFmpeg 3.1 or later. FFmpeg 4.0 is supported.
+* FFmpeg 3.2 or later. FFmpeg 4.0 is supported.
 
 External Libraries
 ------------------
 
 * KissFFT (BSD 3-Clause License)
 
-* FFmpeg (LGPL) ship with FFmpeg 3.4.1 header files by default!
+* FFmpeg (LGPL)
 
 License
 -------

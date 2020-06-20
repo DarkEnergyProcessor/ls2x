@@ -31,19 +31,32 @@ extern "C" {
   in the tools/ directory.
 */
 
+/* User may override KISS_FFT_MALLOC and/or KISS_FFT_FREE. */
 #ifdef USE_SIMD
 # include <xmmintrin.h>
 # define kiss_fft_scalar __m128
-#define KISS_FFT_MALLOC(nbytes) _mm_malloc(nbytes,16)
-#define KISS_FFT_FREE _mm_free
-#else	
-#define KISS_FFT_MALLOC malloc
-#define KISS_FFT_FREE free
-#endif	
+# ifndef KISS_FFT_MALLOC
+#  define KISS_FFT_MALLOC(nbytes) _mm_malloc(nbytes,16)
+#  define KISS_FFT_ALIGN_CHECK(ptr) 
+#  define KISS_FFT_ALIGN_SIZE_UP(size) ((size + 15UL) & ~0xFUL)
+# endif
+# ifndef KISS_FFT_FREE
+#  define KISS_FFT_FREE _mm_free
+# endif
+#else
+# define KISS_FFT_ALIGN_CHECK(ptr)
+# define KISS_FFT_ALIGN_SIZE_UP(size) (size)
+# ifndef KISS_FFT_MALLOC
+#  define KISS_FFT_MALLOC malloc
+# endif
+# ifndef KISS_FFT_FREE
+#  define KISS_FFT_FREE free
+# endif
+#endif
 
 
 #ifdef FIXED_POINT
-#include <sys/types.h>	
+#include <stdint.h>
 # if (FIXED_POINT == 32)
 #  define kiss_fft_scalar int32_t
 # else	

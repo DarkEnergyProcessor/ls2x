@@ -79,7 +79,7 @@ list(APPEND LS2X_SOURCE_FILES src/audiomix.cpp)
 
 # KissFFT
 if (NOT LS2X_DISABLE_FFT)
-	list(APPEND LS2X_SOURCE_FILES src/fft.cpp src/kissfft/kiss_fft.c)
+	list(APPEND LS2X_SOURCE_FILES src/fft.cpp src/kissfft/kiss_fft.c src/kissfft/kiss_fftr.c)
 	list(APPEND LS2X_DEFINES LS2X_USE_KISSFFT kiss_fft_scalar=double)
 endif()
 
@@ -127,3 +127,18 @@ endif()
 set_target_properties(ls2xlib PROPERTIES PREFIX "")
 target_include_directories(ls2xlib PRIVATE ${LS2X_INCLUDE})
 target_compile_definitions(ls2xlib PRIVATE ${LS2X_DEFINES})
+
+# CMake must be at least 3.9.6 for OpenMP detection
+if (LS2X_OPENMP)
+	if (${CMAKE_VERSION} VERSION_LESS "3.9.6")
+		message(WARNING "CMake version is too old for OpenMP detection (v3.9.6 or later is needed). \
+	Compiling without OpenMP support. Performance may be slower slightly!")
+	else ()
+		find_package(OpenMP)
+		if (OpenMP_CXX_FOUND)
+			target_link_libraries(ls2xlib OpenMP::OpenMP_CXX)
+		else ()
+			message(WARNING "Compiling without OpenMP support. Performance may be slower slightly!")
+		endif ()
+	endif ()
+endif ()

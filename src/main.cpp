@@ -65,7 +65,7 @@ extern "C" int luaopen_ls2xlib(lua_State *L)
 	lua_newtable(L);
 	int baseTable = lua_gettop(L);
 	lua_pushstring(L, "_VERSION");
-	lua_pushstring(L, "1.0");
+	lua_pushstring(L, "1.0.1");
 	lua_rawset(L, -3);
 	// rawptr
 	lua_pushstring(L, "rawptr");
