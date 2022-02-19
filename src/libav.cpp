@@ -205,7 +205,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 		}
 
 	// new video stream
-	AVCodec *vCodec = avF.codecFindEncoderByName(usedEncoder);
+	const AVCodec *vCodec = avF.codecFindEncoderByName(usedEncoder);
 	AVStream *vStream = avF.formatNewStream(g_FormatContext, vCodec);
 	vStream->id = g_FormatContext->nb_streams - 1;
 	vStream->time_base = {1, framerate};
@@ -376,7 +376,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	std::queue<AVFrame*>* ret = nullptr;
 	songInformation *sInfo = nullptr;
 	songMetadata *sMeta = nullptr;
-	AVCodec *aCodec = nullptr, *vCodec = nullptr;
+	const AVCodec *aCodec = nullptr, *vCodec = nullptr;
 	AVCodecContext *aCodecCtx = nullptr, *vCodecCtx = nullptr;
 	SwrContext *swr = nullptr;
 	SwsContext *sws = nullptr;

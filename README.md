@@ -16,9 +16,9 @@ The list will be updated as Live Simulator: 2 needs more features.
 Requirements
 ------------
 
-* VS 2013
+* VS 2013 or later.
 
-* FFmpeg 3.2 or later. FFmpeg 4.0 is supported. FFmpeg fork, Libav is NOT supported!
+* FFmpeg 3.2 or later. FFmpeg 4 and 5 is supported. FFmpeg fork, Libav is NOT supported!
 
 External Libraries
 ------------------
