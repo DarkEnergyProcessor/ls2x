@@ -38,7 +38,7 @@ else()
 	endif()
 endif()
 
-# Check libav include, only include.
+# Check FFmpeg libav include, only include.
 if (NOT LS2X_NO_LIBAV)
 	find_path(LS2X_LIBAV_INCLUDE_DIR
 		NAMES libavcodec/avcodec.h
@@ -57,12 +57,12 @@ if (NOT LS2X_NO_LIBAV)
 	)
 
 	if (LS2X_LIBAV_INCLUDE_DIR)
-		message(STATUS "libav include path: ${LS2X_LIBAV_INCLUDE_DIR}")
+		message(STATUS "FFmpeg libav include path: ${LS2X_LIBAV_INCLUDE_DIR}")
 	else()
-		message(WARNING "libav not found!")
+		message(WARNING "FFmpeg libav not found!")
 	endif()
 else()
-	message(STATUS "libav support is disabled")
+	message(STATUS "FFmpeg libav support is disabled")
 endif()
 
 # Source Files
