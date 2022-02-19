@@ -22,10 +22,12 @@ extern "C"
 #include "libswresample/swresample.h"
 }
 
-// Need FFmpeg 3.1 or later
-static_assert(LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57, 48, 0), "libav header is too old, disable libav support with LS2X_NO_LIBAV");
-static_assert(LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 40, 0), "libav header is too old, disable libav support with LS2X_NO_LIBAV");
-static_assert(LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(55, 27, 0), "libav header is too old, disable libav support with LS2X_NO_LIBAV");
+// Need FFmpeg 3.2 or later
+static_assert(LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57, 64, 0), "FFmpeg header is too old (avcodec)");
+static_assert(LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 56, 0), "FFmpeg header is too old (avformat)");
+static_assert(LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(55, 34, 0), "FFmpeg header is too old (avutil)");
+static_assert(LIBSWSCALE_VERSION_INT >= AV_VERSION_INT(4, 2, 0), "FFmpeg header is too old (swscale)");
+static_assert(LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(2, 3, 0), "FFmpeg header is too old (swresample)");
 
 namespace ls2x
 {
