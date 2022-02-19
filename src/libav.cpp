@@ -78,7 +78,6 @@ bool initLibAVFunctions()
 #include "libavfunc.h"
 #undef LS2X_NOLOAD_VERSIONING
 	// done
-	//avF.logSetLevel(AV_LOG_TRACE);
 	return true;
 }
 
@@ -385,20 +384,23 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	int64_t delay = 0;
 	int rval = 0;
 
+	avF.dumpFormat(fmtContext, 0, "None", 0);
+
 	// assume it's already open
 	if (avF.formatFindStreamInfo(fmtContext, nullptr) < 0)
 		return nullptr;
 
 	// use "video" stream for cover art
 	AVStream *aStream = nullptr, *vStream = nullptr;
-	for (unsigned int i = 0; i < fmtContext->nb_streams && aStream == nullptr && vStream == nullptr; i++)
+	int aStreamIndex = -1, vStreamIndex = -1;
+	for (unsigned int i = 0; i < fmtContext->nb_streams && (aStream == nullptr || vStream == nullptr); i++)
 	{
 		AVMediaType x = fmtContext->streams[i]->codecpar->codec_type;
 
 		if (x == AVMEDIA_TYPE_AUDIO && aStream == nullptr)
-			aStream = fmtContext->streams[i];
+			aStream = fmtContext->streams[aStreamIndex = i];
 		else if (x == AVMEDIA_TYPE_VIDEO && vStream == nullptr)
-			vStream = fmtContext->streams[i];
+			vStream = fmtContext->streams[vStreamIndex = i];
 	}
 	if (aStream == nullptr)
 		return nullptr;
@@ -443,8 +445,9 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 
 	// initialize parameters
 	avF.codecParametersToContext(aCodecCtx, aStream->codecpar);
-	if (aCodecCtx->channel_layout == 0)
-		aCodecCtx->channel_layout = avF.getDefaultChannelLayout(aCodecCtx->channels);
+
+	if (vCodecCtx)
+		avF.codecParametersToContext(vCodecCtx, vStream->codecpar);
 
 	// open codec
 	if (avF.codecOpen(aCodecCtx, aCodec, nullptr) < 0 || (vCodec && avF.codecOpen(vCodecCtx, vCodec, nullptr) < 0))
@@ -485,8 +488,8 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 
 	while (rval >= 0)
 	{
-		bool isV = vStream && packet->stream_index == vStream->id;
-		bool isA = packet->stream_index == aStream->id;
+		bool isV = vStream && packet->stream_index == vStreamIndex;
+		bool isA = packet->stream_index == aStreamIndex;
 		bool processPacket = isV || isA;
 		if (processPacket)
 		{
@@ -495,21 +498,24 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 			int r = avF.codecSendPacket(ctx, packet);
 			if (r < 0)
 			{
+				avF.packetUnref(packet);
 				deleteQueue(ret);
 				goto cleanup;
 			}
 			while (r >= 0)
 			{
 				r = avF.codecReceiveFrame(ctx, tempFrame);
+
 				if (r == AVERROR(EAGAIN) || r == AVERROR_EOF)
 					break;
 				else if (r < 0)
 				{
+					avF.packetUnref(packet);
 					deleteQueue(ret);
 					goto cleanup;
 				}
 				
-				if (packet->stream_index == aStream->id)
+				if (packet->stream_index == aStreamIndex)
 				{
 					// audio decode
 					AVFrame *frame = avF.frameAlloc();
@@ -521,41 +527,57 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 					if (avF.frameGetBuffer(frame, 0) < 0)
 					{
 						avF.frameFree(&frame);
+						avF.packetUnref(packet);
 						deleteQueue(ret);
 						goto cleanup;
 					}
 					if (avF.swrConvertFrame(swr, frame, tempFrame) < 0)
 					{
 						avF.frameFree(&frame);
+						avF.packetUnref(packet);
 						deleteQueue(ret);
 						goto cleanup;
 					}
+
 					ret->push(frame);
 					audioLen += frame->nb_samples;
 				}
 				else
 				{
 					// video decode
-					int linesize[] = {tempFrame->width * tempFrame->height * 4};
-					uint8_t *imageData = (uint8_t*) avF.malloc(linesize[0]);
-					uint8_t *dst[] = {imageData};
-					if (avF.swsScale(sws, tempFrame->data, tempFrame->linesize, 0, tempFrame->height, dst, linesize) < 0)
+					uint8_t *imageData[4];
+					int lineSizes[4];
+
+					if (avF.imageAlloc(imageData, lineSizes, tempFrame->width, tempFrame->height, AV_PIX_FMT_RGBA, 1) < 0)
 					{
+						avF.packetUnref(packet);
 						deleteQueue(ret);
 						goto cleanup;
 					}
+
+					if (avF.swsScale(sws, tempFrame->data, tempFrame->linesize, 0, tempFrame->height, imageData, lineSizes) < 0)
+					{
+						avF.packetUnref(packet);
+						deleteQueue(ret);
+						goto cleanup;
+					}
+
 					// set image data
 					sInfo->coverArtWidth = tempFrame->width;
 					sInfo->coverArtHeight = tempFrame->height;
-					sInfo->coverArt = (char*) imageData;
+					sInfo->coverArt = (char *) imageData[0];
+
 					// done with video decoding
 					avF.swsFreeContext(sws); sws = nullptr;
 					avF.codecFreeContext(&vCodecCtx);
 					vStream = nullptr;
+
+					break;
 				}
 			}
 		}
 
+		avF.packetUnref(packet);
 		rval = avF.readPacket(fmtContext, packet);
 	}
 	if (rval != AVERROR_EOF)

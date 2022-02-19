@@ -68,6 +68,7 @@ LOAD_AVFUNC(lavu, free, av_free);
 LOAD_AVFUNC(lavu, strerror, av_strerror);
 LOAD_AVFUNC(lavu, logSetLevel, av_log_set_level);
 LOAD_AVFUNC(lavu, getDefaultChannelLayout, av_get_default_channel_layout);
+LOAD_AVFUNC(lavu, imageAlloc, av_image_alloc);
 // sws
 LOAD_AVFUNC(sws, swsGetContext, sws_getContext);
 LOAD_AVFUNC(sws, swsScale, sws_scale);
