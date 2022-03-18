@@ -12,19 +12,21 @@ jobs:
     - name: Update APT
       run: sudo apt-get update
     - name: Install FFmpeg Development Libraries
-      run: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev --assume-yes
+      run: sudo apt-get install ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev --assume-yes
     - name: Install LuaJIT Development Libraries
       run: sudo apt-get install libluajit-5.1-dev
+    - name: Print FFmpeg Version
+      run: ffmpeg -version
     - name: Configure
       run: cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=Release
     - name: Build
       run: cmake --build build --target install
   build-windows:
     name: LS2X-Windows
-    runs-on: windows-latest
+    runs-on: windows-2019
     strategy:
       matrix:
-        ffmpeg-branch: ["3.2", "4.0"]
+        ffmpeg-branch: ["4.4.1", "5.0"]
         arch: [Win32, x64]
     env:
       FFMPEG_TAG: ${{ matrix.ffmpeg-branch }}
@@ -35,15 +37,15 @@ jobs:
     - name: Download FFmpeg Development Libraries
       shell: cmd
       run: |
-        powershell -command wget -Uri https://ffmpeg.zeranoe.com/builds/win64/dev/ffmpeg-%FFMPEG_TAG%-win64-dev.zip -OutFile ffmpeg-dev.zip
-        7z x ffmpeg-dev.zip
+        curl -o ffmpeg-dev.7z https://github.com/GyanD/codexffmpeg/releases/download/%FFMPEG_TAG%/ffmpeg-%FFMPEG_TAG%-full_build-shared.7z 
+        7z x ffmpeg-dev.7z
     - name: Shallow Clone LuaJIT
       shell: cmd
       run: git clone --depth 1 -b v2.1 https://github.com/LuaJIT/LuaJIT
     - name: Build LuaJIT
       shell: cmd
       run: |
-        rem https://help.github.com/en/actions/automating-your-workflow-with-github-actions/software-installed-on-github-hosted-runners#visual-studio-2019-enterprise
+        rem https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md#visual-studio-enterprise-2019
         set VCBT="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
         if %BUILD_ARCH% == Win32 (
           call %VCBT% x86
@@ -55,7 +57,7 @@ jobs:
         cd ..\..
     - name: Configure
       shell: cmd
-      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\ffmpeg-%FFMPEG_TAG%-win64-dev\include -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
+      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\ffmpeg-%FFMPEG_TAG%-full_build-shared\include -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
     - name: Build
       shell: cmd
       run: cmake --build build --config Release --target install
