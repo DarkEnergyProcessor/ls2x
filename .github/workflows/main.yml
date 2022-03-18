@@ -37,7 +37,7 @@ jobs:
     - name: Download FFmpeg Development Libraries
       shell: cmd
       run: |
-        curl -o ffmpeg-dev.7z https://github.com/GyanD/codexffmpeg/releases/download/%FFMPEG_TAG%/ffmpeg-%FFMPEG_TAG%-full_build-shared.7z 
+        curl -Lo ffmpeg-dev.7z https://github.com/GyanD/codexffmpeg/releases/download/%FFMPEG_TAG%/ffmpeg-%FFMPEG_TAG%-full_build-shared.7z 
         7z x ffmpeg-dev.7z
     - name: Shallow Clone LuaJIT
       shell: cmd
