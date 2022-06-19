@@ -67,7 +67,7 @@ void FFMpegStream::initialize()
 				formatContext->streams[i]->discard = AVDISCARD_ALL;
 
 		AVCodecParameters *param = formatContext->streams[targetStream]->codecpar;
-		AVCodec *codec = f->codecFindDecoder(param->codec_id);
+		const AVCodec *codec = f->codecFindDecoder(param->codec_id);
 		codecContext = f->codecAllocContext(codec);
 		f->codecParametersToContext(codecContext, param);
 
