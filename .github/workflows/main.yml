@@ -1,6 +1,6 @@
 name: LS2X-CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build-linux:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v3
     - name: Update APT
       run: sudo apt-get update
     - name: Install FFmpeg Development Libraries
@@ -18,51 +18,51 @@ jobs:
     - name: Print FFmpeg Version
       run: ffmpeg -version
     - name: Configure
-      run: cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=Release
+      run: cmake -Bbuild -S. --install-prefix $PWD/install -DCMAKE_BUILD_TYPE=Release
     - name: Build
       run: cmake --build build --target install
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ls2xlib-linux
+        path: install/lib/*
   build-windows:
     name: LS2X-Windows
     runs-on: windows-2019
     strategy:
       matrix:
-        ffmpeg-branch: ["4.4.1", "5.0"]
-        arch: [Win32, x64]
+        ffmpeg-branch: ["4.4.1", "5.0", "6.0"]
     env:
       FFMPEG_TAG: ${{ matrix.ffmpeg-branch }}
-      BUILD_ARCH: ${{ matrix.arch }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v3
     - name: Download FFmpeg Development Libraries
       shell: cmd
       run: |
         curl -Lo ffmpeg-dev.7z https://github.com/GyanD/codexffmpeg/releases/download/%FFMPEG_TAG%/ffmpeg-%FFMPEG_TAG%-full_build-shared.7z 
         7z x ffmpeg-dev.7z
     - name: Shallow Clone LuaJIT
-      shell: cmd
-      run: git clone --depth 1 -b v2.1 https://github.com/LuaJIT/LuaJIT
+      uses: actions/checkout@v3
+      with:
+        repository: LuaJIT/LuaJIT
     - name: Build LuaJIT
       shell: cmd
       run: |
-        rem https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md#visual-studio-enterprise-2019
+        rem https://github.com/actions/runner-images/blob/main/images/win/Windows2019-Readme.md#visual-studio-enterprise-2019
         set VCBT="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
-        if %BUILD_ARCH% == Win32 (
-          call %VCBT% x86
-        ) else (
-          call %VCBT% x86_amd64
-        )
+        call %VCBT% x86_amd64
         cd LuaJIT\src
         msvcbuild.bat amalg
         cd ..\..
     - name: Configure
       shell: cmd
-      run: cmake -Bbuild -H. -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\ffmpeg-%FFMPEG_TAG%-full_build-shared\include -A %BUILD_ARCH% -DCMAKE_INSTALL_PREFIX=%CD%\install
+      run: cmake -Bbuild -S. --install-prefix %CD%\install -DLUAJIT_DIR=%CD%\LuaJIT\src -DLIBAV_INCLUDE_DIR=%CD%\ffmpeg-%FFMPEG_TAG%-full_build-shared\include -T v142 -A x64
     - name: Build
       shell: cmd
       run: cmake --build build --config Release --target install
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
-        name: ls2xlib-${{ matrix.arch }}-ffmpeg${{ matrix.ffmpeg-branch }}
-        path: install/lib
+        name: ls2xlib-win64-ffmpeg${{ matrix.ffmpeg-branch }}
+        path: install/lib/*
