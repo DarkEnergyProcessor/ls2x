@@ -18,6 +18,20 @@ if (LOVE_SRC_COMMON)
 	set(LOVE_INCLUDE_DIR ${LOVE_INCLUDE_DIR}/src)
 endif()
 
+function(print_option name)
+	message(STATUS "Option ${name} = ${${name}}")
+endfunction()
+
+option(LS2X_NO_LIBAV "Disable libav" OFF)
+option(LIBAV_INCLUDE_DIR "FFmpeg include directories" "")
+option(LS2X_DISABLE_FFT "Disable FFT" OFF)
+option(LS2X_OPENMP "Use OpenMP for AudioMix when possible" ON)
+
+print_option(LS2X_NO_LIBAV)
+print_option(LIBAV_INCLUDE_DIR)
+print_option(LS2X_DISABLE_FFT)
+print_option(LS2X_OPENMP)
+
 if (MEGA)
 	# Dependencies brought along with build system
 	if (LOVE_JIT)
@@ -74,6 +88,11 @@ if (WIN32)
 	list(APPEND LS2X_DEFINES LUA_BUILD_AS_DLL)
 endif()
 
+if (MSVC)
+	# ...
+	list(APPEND LS2X_DEFINES _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Audiomix routine, always supported
 list(APPEND LS2X_SOURCE_FILES src/audiomix.cpp)
 
@@ -118,7 +137,7 @@ if (LOVE_INCLUDE_DIR)
 	target_include_directories(ls2xlib PRIVATE ${LOVE_INCLUDE_DIR}/modules)
 else()
 	# shared library
-	add_library(ls2xlib SHARED ${LS2X_SOURCE_FILES})
+	add_library(ls2xlib MODULE ${LS2X_SOURCE_FILES})
 	message(STATUS "LOVE not found (shared lib mode)")
 	install(TARGETS ls2xlib DESTINATION lib)
 	target_link_libraries(ls2xlib ${DESIRED_LUA_LIBRARY})
