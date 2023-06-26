@@ -67,14 +67,23 @@ LOAD_AVFUNC(lavu, malloc, av_mallocz);
 LOAD_AVFUNC(lavu, free, av_free);
 LOAD_AVFUNC(lavu, strerror, av_strerror);
 LOAD_AVFUNC(lavu, logSetLevel, av_log_set_level);
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 2, 0)
+LOAD_AVFUNC(lavu, getDefaultChannelLayout, av_channel_layout_default);
+LOAD_AVFUNC(lavu, channelLayoutFromMask, av_channel_layout_from_mask);
+#else
 LOAD_AVFUNC(lavu, getDefaultChannelLayout, av_get_default_channel_layout);
+#endif
 LOAD_AVFUNC(lavu, imageAlloc, av_image_alloc);
 // sws
 LOAD_AVFUNC(sws, swsGetContext, sws_getContext);
 LOAD_AVFUNC(sws, swsScale, sws_scale);
 LOAD_AVFUNC(sws, swsFreeContext, sws_freeContext);
 // swr
+#if LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(4, 10, 0)
+LOAD_AVFUNC(swr, swrAllocSetOpts, swr_alloc_set_opts2);
+#else
 LOAD_AVFUNC(swr, swrAllocSetOpts, swr_alloc_set_opts);
+#endif
 LOAD_AVFUNC(swr, swrInit, swr_init);
 LOAD_AVFUNC(swr, swrConvertFrame, swr_convert_frame);
 LOAD_AVFUNC(swr, swrGetDelay, swr_get_delay);

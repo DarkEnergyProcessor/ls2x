@@ -18,7 +18,7 @@ Requirements
 
 * VS 2013 or later.
 
-* FFmpeg 3.2 or later. FFmpeg 4 and 5 is supported. FFmpeg fork, Libav is NOT supported!
+* FFmpeg 3.2 or later. FFmpeg 4, 5, and 6 is supported. FFmpeg fork (Libav) is NOT supported!
 
 External Libraries
 ------------------

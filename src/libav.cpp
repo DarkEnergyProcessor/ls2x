@@ -91,6 +91,83 @@ bool freeLibAV()
 	return false;
 }
 
+static void printAVError(int err)
+{
+	char temp[128];
+	avF.strerror(err, temp, 127);
+	fprintf(stderr, "%s\n", temp);
+}
+
+template<typename AV>
+static void fixChannelLayout(AV *ctx)
+{
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 0)
+#	if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 2, 0)
+	if (ctx->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC)
+		avF.getDefaultChannelLayout(&ctx->ch_layout, ctx->ch_layout.nb_channels);
+# 	else
+#		error "Using libavcodec 60 requires libavutil 58.2"
+#	endif
+#else
+	if (ctx->channel_layout == 0)
+		ctx->channel_layout = (uint64_t) avF.getDefaultChannelLayout(ctx->channels);
+#endif
+}
+
+static bool initializeSwresample(SwrContext **swr, AVCodecContext *ctx)
+{
+	fixChannelLayout(ctx);
+
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 0)
+	// FFmpeg 6
+#	if LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(4, 10, 0)
+	// use swr_alloc_set_opts2
+	static AVChannelLayout stereo = {AV_CHANNEL_ORDER_UNSPEC};
+	if (stereo.order == AV_CHANNEL_ORDER_UNSPEC)
+		avF.channelLayoutFromMask(&stereo, AV_CH_LAYOUT_STEREO);
+
+	return avF.swrAllocSetOpts(swr,
+		&stereo,
+		AV_SAMPLE_FMT_S16,
+		ctx->sample_rate,
+		&ctx->ch_layout,
+		ctx->sample_fmt,
+		ctx->sample_rate,
+		0, nullptr
+	) == 0;
+#	else
+#		error "Using libavcodec 60.0 requires libswresample 4.10"
+#	endif // LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(4, 10, 0)
+#else // LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 100)
+	// use swr_alloc_set_opts
+	SwrContext *newSwr = avF.swrAllocSetOpts(*swr,
+		AV_CH_LAYOUT_STEREO,
+		AV_SAMPLE_FMT_S16,
+		ctx->sample_rate,
+		ctx->channel_layout,
+		ctx->sample_fmt,
+		ctx->sample_rate,
+		0, nullptr
+	);
+	if (newSwr != nullptr)
+		*swr = newSwr;
+	return newSwr != nullptr;
+#endif // LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 100)
+}
+
+static void setFrameChannelLayout(AVFrame *frame, uint64_t mask)
+{
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 0)
+#	if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 2, 0)
+	avF.channelLayoutFromMask(&frame->ch_layout, mask);
+# 	else
+#		error "Using libavcodec 60 requires libavutil 58.2"
+#	endif
+#else
+	frame->channel_layout = mask;
+#endif
+}
+
 // isSupported also initialize the libav
 bool isSupported()
 {
@@ -290,9 +367,7 @@ bool startSession(const char *output, int width, int height, int framerate)
 	int ret = avF.formatWriteHeader(g_FormatContext, nullptr);
 	if (ret < 0)
 	{
-		char temp[128];
-		avF.strerror(ret, temp, 127);
-		fprintf(stderr, temp);
+		printAVError(ret);
 		clean();
 		return false;
 	}
@@ -454,15 +529,8 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 		goto cleanup;
 
 	// init swr
-	swr = avF.swrAllocSetOpts(nullptr,
-		AV_CH_LAYOUT_STEREO,
-		AV_SAMPLE_FMT_S16,
-		aCodecCtx->sample_rate,
-		aCodecCtx->channel_layout,
-		aCodecCtx->sample_fmt,
-		aCodecCtx->sample_rate,
-		0, nullptr
-	);
+	if (!initializeSwresample(&swr, aCodecCtx))
+		goto cleanup;
 	if (avF.swrInit(swr) < 0)
 		goto cleanup;
 	if (vCodecCtx)
@@ -510,6 +578,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 					break;
 				else if (r < 0)
 				{
+					printAVError(r);
 					avF.packetUnref(packet);
 					deleteQueue(ret);
 					goto cleanup;
@@ -521,8 +590,10 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 					AVFrame *frame = avF.frameAlloc();
 					frame->format = AV_SAMPLE_FMT_S16;
 					frame->nb_samples = tempFrame->nb_samples;
-					frame->channel_layout = AV_CH_LAYOUT_STEREO;
 					frame->sample_rate = tempFrame->sample_rate;
+					setFrameChannelLayout(frame, AV_CH_LAYOUT_STEREO);
+					fixChannelLayout(tempFrame);
+
 					// swr_convert_frame will call av_frame_get_buffer
 					if (avF.frameGetBuffer(frame, 0) < 0)
 					{
@@ -531,8 +602,10 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 						deleteQueue(ret);
 						goto cleanup;
 					}
-					if (avF.swrConvertFrame(swr, frame, tempFrame) < 0)
+					int convertResult = avF.swrConvertFrame(swr, frame, tempFrame);
+					if (convertResult < 0)
 					{
+						printAVError(convertResult);
 						avF.frameFree(&frame);
 						avF.packetUnref(packet);
 						deleteQueue(ret);
@@ -597,7 +670,7 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 				AVFrame *frame = avF.frameAlloc();
 				frame->format = AV_SAMPLE_FMT_S16;
 				frame->nb_samples = tempFrame->nb_samples;
-				frame->channel_layout = AV_CH_LAYOUT_STEREO;
+				setFrameChannelLayout(frame, AV_CH_LAYOUT_STEREO);
 
 				// swr_convert_frame will call av_frame_get_buffer
 				if (avF.swrConvertFrame(swr, frame, tempFrame) < 0)
@@ -618,8 +691,9 @@ std::queue<AVFrame*>* loadAudioMainRoutine(AVFormatContext *fmtContext, songInfo
 	{
 		AVFrame *frame = avF.frameAlloc();
 		frame->format = AV_SAMPLE_FMT_S16;
-		frame->channel_layout = AV_CH_LAYOUT_STEREO;
 		frame->nb_samples = (int) delay;
+		setFrameChannelLayout(frame, AV_CH_LAYOUT_STEREO);
+
 		if (avF.frameGetBuffer(frame, 0) < 0)
 		{
 			avF.frameFree(&frame);
