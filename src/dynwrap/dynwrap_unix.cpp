@@ -4,6 +4,8 @@
 
 #include "dynwrap.h"
 
+#ifndef _WIN32
+
 #include <dlfcn.h>
 
 namespace ls2x
@@ -32,3 +34,5 @@ so::~so()
 }
 
 }
+
+#endif // !_WIN32

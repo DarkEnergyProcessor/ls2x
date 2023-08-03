@@ -3,6 +3,9 @@
 // See copyright notice in LS2X main.cpp
 
 #include "dynwrap.h"
+
+#ifdef _WIN32
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -32,3 +35,5 @@ so::~so()
 }
 
 }
+
+#endif // _WIN32
