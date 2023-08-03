@@ -171,7 +171,7 @@ void LVEPVideoStream::pause()
 
 void LVEPVideoStream::tinySeek(double target)
 {
-#ifdef LVEP_USE_FFMPEG6:
+#if LVEP_USE_FFMPEG6
 	int64_t dur = frame->duration;
 #else
 	int64_t dur = frame->pkt_duration;
