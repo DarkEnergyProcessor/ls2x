@@ -171,6 +171,12 @@ void LVEPVideoStream::pause()
 
 void LVEPVideoStream::tinySeek(double target)
 {
-	while (target > stream->translateTimestamp(frame->pts + frame->pkt_duration))
+#ifdef LVEP_USE_FFMPEG6:
+	int64_t dur = frame->duration;
+#else
+	int64_t dur = frame->pkt_duration;
+#endif
+
+	while (target > stream->translateTimestamp(frame->pts + dur))
 		stream->readFrame(frame);
 }

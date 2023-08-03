@@ -18,6 +18,16 @@ LVEPDecoder::LVEPDecoder(love::filesystem::FileData *data, int bufferSize)
 		throw love::Exception("No first frame");
 	}
 	
+#if LVEP_USE_FFMPEG6
+	AVChannelLayout *channelLayout = &frame->ch_layout;
+
+	f->swrAllocSetOpts(
+		&recodeContext,
+		channelLayout, AV_SAMPLE_FMT_S16, frame->sample_rate,
+		channelLayout, (AVSampleFormat) frame->format, frame->sample_rate,
+		0, nullptr
+	);
+#else
 	int channelLayout = frame->channel_layout;
 	if (!channelLayout)
 		channelLayout = f->getDefaultChannelLayout(frame->channels);
@@ -28,6 +38,7 @@ LVEPDecoder::LVEPDecoder(love::filesystem::FileData *data, int bufferSize)
 		channelLayout, (AVSampleFormat) frame->format, frame->sample_rate,
 		0, nullptr
 	);
+#endif
 	f->swrInit(recodeContext);
 }
 
@@ -59,13 +70,22 @@ int LVEPDecoder::decode()
 		eof = true;
 		return 0;
 	}
+
 	uint8_t *buffers[2] = {(uint8_t *) buffer, nullptr};
+#if LVEP_USE_FFMPEG6
+	int nchannels = frame->ch_layout.nb_channels;
+#else
+	int nchannels = frame->channels;
+#endif
+
 	int decoded = f->swrConvert(recodeContext,
-				buffers, (bufferSize >> 1) / frame->channels,
+				buffers, (bufferSize >> 1) / nchannels,
 				(const uint8_t**) &frame->data[0], frame->nb_samples);
+
 	if (decoded < 0)
 		return 0;
-	return decoded*frame->channels*2;
+
+	return decoded*nchannels*2;
 }
 
 bool LVEPDecoder::seek(double s)
@@ -91,7 +111,11 @@ bool LVEPDecoder::isFinished()
 
 int LVEPDecoder::getChannelCount() const
 {
+#if LVEP_USE_FFMPEG6
+	return frame->ch_layout.nb_channels;
+#else
 	return frame->channels;
+#endif
 }
 
 int LVEPDecoder::getBitDepth() const

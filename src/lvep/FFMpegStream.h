@@ -20,6 +20,8 @@ extern "C"
 }
 #include "../libav.h"
 
+#define LVEP_USE_FFMPEG6 (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 0, 0)) && (LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(4, 10, 0))
+
 class FFMpegStream
 {
 public:
