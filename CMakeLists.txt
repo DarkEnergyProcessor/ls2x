@@ -32,10 +32,14 @@ print_option(LIBAV_INCLUDE_DIR)
 print_option(LS2X_DISABLE_FFT)
 print_option(LS2X_OPENMP)
 
+set(LS2X_EXTRA_DEPS "")
+
 if (MEGA)
 	# Dependencies brought along with build system
 	if (LOVE_JIT)
 		set(DESIRED_LUA_INCLUDE_DIR ${MEGA_LUAJIT_INCLUDE})
+		set(DESIRED_LUA_LIBRARY ${MEGA_LUAJIT_LIB})
+		set(LS2X_EXTRA_DEPS luajit)
 	else()
 		message(ERROR "Cannot use LS2X without LuaJIT")
 	endif()
@@ -125,16 +129,16 @@ if (LS2X_LIBAV_INCLUDE_DIR)
 			src/lvep/LVEPVideoStream.cpp
 		)
 		list(APPEND LS2X_DEFINES LS2X_EMBEDDED_IN_LOVE)
-		list(APPEND LS2X_INCLUDE ${LOVE_INCLUDE_DIR})
+		list(APPEND LS2X_INCLUDE "${LOVE_INCLUDE_DIR}" "${LOVE_INCLUDE_DIR}/modules")
 	endif()
 endif()
 
+message(STATUS "INCLUDE LS2X ${LS2X_INCLUDE}")
 # Library
 if (LOVE_INCLUDE_DIR)
 	# static library
 	add_library(ls2xlib STATIC ${LS2X_SOURCE_FILES})
 	message(STATUS "LOVE include (static lib mode): ${LOVE_INCLUDE_DIR}")
-	target_include_directories(ls2xlib PRIVATE ${LOVE_INCLUDE_DIR}/modules)
 else()
 	# shared library
 	add_library(ls2xlib MODULE ${LS2X_SOURCE_FILES})
@@ -143,6 +147,9 @@ else()
 	target_link_libraries(ls2xlib ${DESIRED_LUA_LIBRARY})
 endif()
 
+if(LS2X_EXTRA_DEPS)
+	add_dependencies(ls2xlib ${LS2X_EXTRA_DEPS})
+endif()
 set_target_properties(ls2xlib PROPERTIES PREFIX "")
 target_include_directories(ls2xlib PRIVATE ${LS2X_INCLUDE})
 target_compile_definitions(ls2xlib PRIVATE ${LS2X_DEFINES})
