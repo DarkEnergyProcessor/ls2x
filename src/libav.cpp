@@ -386,7 +386,11 @@ bool supply(const void *videoData)
 	const uint8_t *vData[] = {(const uint8_t*)videoData};
 	int vLinesize[] = {g_Width * 4};
 	avF.swsScale(g_SwsContext, vData, vLinesize, 0, g_Height, g_VFrame->data, g_VFrame->linesize);
+#if LIBAVCODEC_VERSION_MAJOR >= 60
+	g_VFrame->pts = g_VCodecContext->frame_num;
+#else
 	g_VFrame->pts = g_VCodecContext->frame_number;
+#endif
 
 	// Video encode
 	int ret = avF.codecSendFrame(g_VCodecContext, g_VFrame);
